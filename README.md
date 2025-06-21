@@ -51,7 +51,7 @@ A React Native mobile application that replicates the exact design and functiona
 1. Clone the repository:
 ```bash
 git clone <repository-url>
-cd tar3
+cd tar
 ```
 
 2. Install dependencies:

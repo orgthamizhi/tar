@@ -41,7 +41,7 @@ export default function SalesScreen({ onOpenMenu }: SalesScreenProps) {
   return (
     <View className="flex-1 bg-gray-50">
       {/* Header */}
-      <View style={{ paddingTop: insets.top }} className="bg-white">
+      <View className="bg-white">
         <View className="px-4 py-4">
           <View className="flex-row items-center justify-between">
             <Text className="text-xl font-semibold text-gray-900">Track your sales performance.</Text>

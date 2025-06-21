@@ -225,10 +225,10 @@ export default function ProductsScreen({ isGridView = false }: ProductsScreenPro
     );
   }
 
-  // Filter Modal
+  // Filter Modal - Full screen with no spacing above
   if (showFilterModal) {
     return (
-      <View className="flex-1 bg-white" style={{ paddingTop: insets.top }}>
+      <View className="flex-1 bg-white">
         {/* Header */}
         <View className="bg-white border-b border-gray-200">
           <View className="px-4 py-4">
@@ -274,7 +274,7 @@ export default function ProductsScreen({ isGridView = false }: ProductsScreenPro
   }
 
   return (
-    <View className="flex-1 bg-white" style={{ paddingTop: insets.top }}>
+    <View className="flex-1 bg-white">
       {/* Search Bar with top and bottom borders - NO spacing above */}
       <View className="border-t border-b border-gray-200 bg-white px-4 py-3">
         <View className="flex-row items-center">
@@ -285,20 +285,15 @@ export default function ProductsScreen({ isGridView = false }: ProductsScreenPro
 
           {/* Search Input */}
           <TextInput
-            placeholder="Filter products"
+            placeholder="Search"
             value={searchQuery}
             onChangeText={setSearchQuery}
             className="flex-1 text-base text-gray-900 ml-3 mr-3"
             placeholderTextColor="#9CA3AF"
           />
 
-          {/* Help/Info Icon */}
-          <TouchableOpacity className="mr-3">
-            <Feather name="help-circle" size={20} color="#9CA3AF" />
-          </TouchableOpacity>
-
-          {/* Sort Icon */}
-          <TouchableOpacity>
+          {/* Filter Icon - Only one icon needed */}
+          <TouchableOpacity onPress={() => setShowFilterModal(true)}>
             <MaterialCommunityIcons name="sort-ascending" size={20} color="#9CA3AF" />
           </TouchableOpacity>
         </View>

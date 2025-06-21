@@ -382,9 +382,9 @@ export default function ProductFormScreen({ product, onClose, onSave }: ProductF
   ];
 
   return (
-    <View className="flex-1 bg-gray-50" style={{ paddingTop: 0 }}>
+    <View className="flex-1 bg-gray-50">
       {/* Header */}
-      <View className="bg-white border-b border-gray-200" style={{ paddingTop: insets.top }}>
+      <View className="bg-white border-b border-gray-200">
         <View className="px-4 py-4">
           <View className="flex-row items-center justify-between">
             <TouchableOpacity onPress={onClose}>

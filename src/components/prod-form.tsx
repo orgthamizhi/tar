@@ -22,11 +22,11 @@ export default function ProductFormScreen({ product, onClose, onSave }: ProductF
   const isEditing = !!product;
 
   const [formData, setFormData] = useState({
-    // Handle migration from old fields to new fields
-    title: product?.title || product?.name || '',
-    image: product?.image || product?.imageUrl || '',
+    // Use only new schema fields - legacy fields removed after migration
+    title: product?.title || '',
+    image: product?.image || '',
     medias: product?.medias || [],
-    excerpt: product?.excerpt || product?.description || '',
+    excerpt: product?.excerpt || '',
     notes: product?.notes || '',
     type: product?.type || '',
     category: product?.category || '',
@@ -40,7 +40,7 @@ export default function ProductFormScreen({ product, onClose, onSave }: ProductF
     metafields: product?.metafields || null,
     saleinfo: product?.saleinfo || null,
     stores: product?.stores || null,
-    pos: product?.pos ?? product?.isActive ?? false,
+    pos: product?.pos ?? false,
     website: product?.website ?? false,
     seo: product?.seo || null,
     tags: product?.tags || '',
@@ -117,11 +117,7 @@ export default function ProductFormScreen({ product, onClose, onSave }: ProductF
       if (formData.relproducts) productData.relproducts = formData.relproducts;
       if (formData.sellproducts) productData.sellproducts = formData.sellproducts;
 
-      // Also update legacy fields for backward compatibility during migration
-      productData.name = formData.title.trim(); // Keep name in sync with title
-      if (formData.excerpt) productData.description = formData.excerpt.trim();
-      if (formData.image) productData.imageUrl = formData.image;
-      productData.isActive = formData.pos; // Map pos to isActive for now
+      // Legacy fields removed after migration completion
 
       if (isEditing) {
         await db.transact(db.tx.products[product.id].update(productData));
@@ -141,9 +137,9 @@ export default function ProductFormScreen({ product, onClose, onSave }: ProductF
   // Define tabs with their content
   const tabs: VerticalTab[] = [
     {
-      id: 'basic',
-      label: 'Basic',
-      icon: <MaterialIcons name="info-outline" size={20} color="#6B7280" />,
+      id: 'core',
+      label: 'Core',
+      icon: <MaterialIcons name="inventory-2" size={20} color="#6B7280" />,
       content: (
         <TabContent title="Basic Information">
           <FieldGroup title="Product Details">

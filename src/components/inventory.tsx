@@ -80,7 +80,7 @@ export default function InventoryAdjustmentScreen({
             
             <View className="flex-1 items-center">
               <Text className="text-lg font-semibold text-gray-900">Quantities</Text>
-              <Text className="text-sm text-gray-600">{product.name}</Text>
+              <Text className="text-sm text-gray-600">{product.title}</Text>
             </View>
             
             <TouchableOpacity onPress={handleSave}>

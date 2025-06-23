@@ -164,7 +164,7 @@ export default function WorkspaceContent({ currentScreen }: WorkspaceContentProp
               </Text>
               {lowStockProducts.slice(0, 3).map((product, index) => (
                 <Text key={index} className="text-orange-600 text-sm">
-                  • {product.title || product.name} ({product.stock || 0} left)
+                  • {product.title} ({product.stock || 0} left)
                 </Text>
               ))}
               {lowStockProducts.length > 3 && (

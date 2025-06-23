@@ -8,7 +8,7 @@ interface MediaPickerProps {
   onUploadComplete?: (result: UploadResult) => void;
   onUploadStart?: () => void;
   allowMultiple?: boolean;
-  mediaTypes?: ImagePicker.MediaTypeOptions;
+  mediaTypes?: 'Images' | 'Videos' | 'All';
   quality?: number;
   maxWidth?: number;
   maxHeight?: number;
@@ -20,7 +20,7 @@ export default function MediaPicker({
   onUploadComplete,
   onUploadStart,
   allowMultiple = false,
-  mediaTypes = 'Images' as any, // Temporary fix
+  mediaTypes = 'Images',
   quality = 0.8,
   maxWidth = 1920,
   maxHeight = 1920,
@@ -49,7 +49,7 @@ export default function MediaPicker({
 
     try {
       const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes,
+        mediaTypes: mediaTypes as any, // Convert string to enum
         allowsMultipleSelection: allowMultiple,
         quality,
         maxWidth,
@@ -79,7 +79,7 @@ export default function MediaPicker({
 
     try {
       const result = await ImagePicker.launchCameraAsync({
-        mediaTypes,
+        mediaTypes: mediaTypes as any, // Convert string to enum
         quality,
         maxWidth,
         maxHeight,

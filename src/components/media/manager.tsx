@@ -112,7 +112,7 @@ export default function MediaManager({
             onUploadStart={handleUploadStart}
             onUploadComplete={handleUploadComplete}
             allowMultiple={allowMultiple}
-            mediaTypes={'Images' as any}
+            mediaTypes="Images"
             prefix={prefix}
             disabled={uploading || !canUploadMore}
           />

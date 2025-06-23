@@ -13,6 +13,7 @@ import FullScreenMenu from "../components/menu";
 import BottomNavigation, { BottomTab, MainScreen } from "../components/nav";
 import BottomTabContent from "../components/tabs";
 import { runMigrationIfNeeded } from "../lib/migrate-products";
+import { completeMigrationProcess } from "../lib/cleanup-legacy";
 
 type Screen = 'dashboard' | 'sales' | 'reports' | 'products' | 'collections' | 'menu';
 
@@ -23,9 +24,28 @@ export default function Page() {
   const [isGridView, setIsGridView] = useState(false); // false = list view (default), true = grid view
   const [showManagement, setShowManagement] = useState(false); // false = product/collection list (default), true = management screen
 
-  // Run migration on app startup
+  // Run complete migration process on app startup
   useEffect(() => {
-    runMigrationIfNeeded();
+    const runCompleteMigration = async () => {
+      try {
+        console.log('🚀 Starting complete migration process...');
+        const result = await completeMigrationProcess();
+
+        if (result.success) {
+          console.log('✅ Complete migration process finished successfully');
+        } else {
+          console.error('❌ Complete migration process failed:', result.error);
+          // Fallback to old migration if complete process fails
+          await runMigrationIfNeeded();
+        }
+      } catch (error) {
+        console.error('❌ Migration error:', error);
+        // Fallback to old migration if complete process fails
+        await runMigrationIfNeeded();
+      }
+    };
+
+    runCompleteMigration();
   }, []);
 
   const handleNavigate = (screen: Screen) => {

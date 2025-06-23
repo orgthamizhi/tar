@@ -53,12 +53,7 @@ const _schema = i.schema({
       featured:     i.boolean().optional(),
       relproducts:  i.json().optional(),
       sellproducts: i.json().optional(),
-      // Legacy fields for migration
-      name:         i.string().optional(), // will be removed after migration
-      description:  i.string().optional(), // will be removed after migration
-      sku:          i.string().optional(), // will be removed after migration
-      imageUrl:     i.string().optional(), // will be removed after migration
-      isActive:     i.boolean().optional(), // will be removed after migration
+      // Legacy fields removed after migration completion
     }),
   },
   links: {

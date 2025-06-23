@@ -34,7 +34,7 @@ export default function ProductsScreen({ isGridView = false }: ProductsScreenPro
 
   // Filter products based on search and status
   const filteredProducts = products.filter((product: any) => {
-    const title = product.title || product.name || '';
+    const title = product.title || '';
     const category = product.category || '';
     const brand = product.brand || '';
     const tags = product.tags || '';
@@ -169,7 +169,7 @@ export default function ProductsScreen({ isGridView = false }: ProductsScreenPro
   };
 
   const handleDelete = (product: any) => {
-    const productName = product.title || product.name || 'this product';
+    const productName = product.title || 'this product';
     Alert.alert(
       'Confirm Delete',
       `Delete "${productName}"?`,
@@ -384,7 +384,7 @@ export default function ProductsScreen({ isGridView = false }: ProductsScreenPro
                     {/* Product Info */}
                     <View className="flex-1">
                       <Text className="text-base font-medium text-gray-900 mb-1" numberOfLines={1}>
-                        {product.title || product.name}
+                        {product.title}
                       </Text>
                       <Text className="text-sm text-gray-500">
                         {getVariantCount(product)} variants

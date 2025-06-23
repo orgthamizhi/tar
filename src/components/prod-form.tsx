@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useCallback } from 'react';
 import { View, Text, TouchableOpacity, Alert, TextInput, Switch } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { id } from '@instantdb/react-native';
@@ -9,6 +9,7 @@ import Card from './ui/Card';
 import QuantitySelector from './ui/qty';
 import VerticalTabs, { TabContent, FieldGroup, VerticalTab } from './ui/vtabs';
 import { db, getCurrentTimestamp } from '../lib/instant';
+import { MediaManager, MediaItem } from './media';
 
 interface ProductFormScreenProps {
   product?: any;
@@ -24,7 +25,7 @@ export default function ProductFormScreen({ product, onClose, onSave }: ProductF
     // Handle migration from old fields to new fields
     title: product?.title || product?.name || '',
     image: product?.image || product?.imageUrl || '',
-    medias: product?.medias || null,
+    medias: product?.medias || [],
     excerpt: product?.excerpt || product?.description || '',
     notes: product?.notes || '',
     type: product?.type || '',
@@ -61,6 +62,15 @@ export default function ProductFormScreen({ product, onClose, onSave }: ProductF
     setFormData(prev => ({ ...prev, [field]: value }));
   };
 
+  const handleMediaChange = useCallback((media: MediaItem[]) => {
+    setFormData(prev => ({
+      ...prev,
+      medias: media,
+      // Update primary image URL for backward compatibility
+      image: media.length > 0 ? media[0].url : '',
+    }));
+  }, []);
+
   const handleSave = async () => {
     if (!formData.title.trim()) {
       Alert.alert('Error', 'Product title is required');
@@ -78,7 +88,7 @@ export default function ProductFormScreen({ product, onClose, onSave }: ProductF
 
       // Add optional fields if they have values
       if (formData.image) productData.image = formData.image;
-      if (formData.medias) productData.medias = formData.medias;
+      if (formData.medias && formData.medias.length > 0) productData.medias = formData.medias;
       if (formData.excerpt) productData.excerpt = formData.excerpt.trim();
       if (formData.notes) productData.notes = formData.notes.trim();
       if (formData.type) productData.type = formData.type.trim();
@@ -261,19 +271,29 @@ export default function ProductFormScreen({ product, onClose, onSave }: ProductF
       icon: <Feather name="image" size={20} color="#6B7280" />,
       content: (
         <TabContent title="Media & Assets">
-          <FieldGroup title="Images & Media">
+          <FieldGroup title="Product Media">
+            <MediaManager
+              initialMedia={formData.medias}
+              onMediaChange={handleMediaChange}
+              maxItems={10}
+              allowMultiple={true}
+              prefix="products"
+              title="Product Images & Videos"
+              description="Upload high-quality images and videos to showcase your product"
+            />
+          </FieldGroup>
+
+          <FieldGroup title="Legacy Image URL">
             <Input
-              label="Image URL"
+              label="Image URL (Optional)"
               placeholder="https://example.com/image.jpg"
               value={formData.image}
               onChangeText={(value) => updateField('image', value)}
               variant="outline"
             />
-            <TouchableOpacity className="bg-gray-50 border-2 border-dashed border-gray-300 rounded-lg p-8 items-center">
-              <Feather name="upload" size={24} color="#6B7280" />
-              <Text className="text-gray-600 mt-2">Upload media files</Text>
-              <Text className="text-gray-400 text-sm">Images, videos, or 3D models</Text>
-            </TouchableOpacity>
+            <Text className="text-xs text-gray-500 mt-1">
+              This field is automatically updated when you upload media above
+            </Text>
           </FieldGroup>
 
           <FieldGroup title="QR Code">

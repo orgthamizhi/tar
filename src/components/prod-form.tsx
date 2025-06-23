@@ -8,6 +8,7 @@ import Button from './ui/Button';
 import Card from './ui/Card';
 import QuantitySelector from './ui/qty';
 import VerticalTabs, { TabContent, FieldGroup, VerticalTab } from './ui/vtabs';
+import R2Image from './ui/r2-image';
 import { db, getCurrentTimestamp } from '../lib/instant';
 import { MediaManager, MediaItem } from './media';
 
@@ -57,12 +58,17 @@ export default function ProductFormScreen({ product, onClose, onSave }: ProductF
 
   const [loading, setLoading] = useState(false);
   const [activeTab, setActiveTab] = useState('basic');
+  const [imageError, setImageError] = useState(false);
 
   const updateField = (field: string, value: any) => {
+    if (field === 'image') {
+      setImageError(false); // Reset image error when image URL changes
+    }
     setFormData(prev => ({ ...prev, [field]: value }));
   };
 
   const handleMediaChange = useCallback((media: MediaItem[]) => {
+    setImageError(false); // Reset image error when media changes
     setFormData(prev => ({
       ...prev,
       medias: media,
@@ -142,6 +148,56 @@ export default function ProductFormScreen({ product, onClose, onSave }: ProductF
       icon: <MaterialIcons name="inventory-2" size={20} color="#6B7280" />,
       content: (
         <TabContent title="Basic Information">
+          <FieldGroup title="Product Image">
+            <View className="items-center">
+              <View
+                className="bg-gray-100 rounded-lg border-2 border-dashed border-gray-300 items-center justify-center overflow-hidden"
+                style={{ width: 200, height: 200 }}
+              >
+                {formData.image && !imageError ? (
+                  <R2Image
+                    url={formData.image}
+                    style={{ width: 200, height: 200 }}
+                    resizeMode="cover"
+                    onError={(error) => {
+                      console.log('R2Image load error:', error);
+                      setImageError(true);
+                    }}
+                    onLoad={() => {
+                      console.log('R2Image loaded successfully:', formData.image);
+                    }}
+                  />
+                ) : (
+                  <View className="items-center">
+                    <MaterialIcons name="image" size={48} color="#9CA3AF" />
+                    <Text className="text-gray-500 text-sm mt-2 text-center">
+                      {formData.image && imageError ? 'Failed to load image' : 'No image selected'}
+                    </Text>
+                    <Text className="text-gray-400 text-xs mt-1 text-center">
+                      {formData.image && imageError ? 'Check image URL' : 'Upload in Media tab'}
+                    </Text>
+                  </View>
+                )}
+              </View>
+              {formData.image && (
+                <View className="mt-2 items-center">
+                  <Text className="text-xs text-gray-500 text-center" style={{ maxWidth: 200 }} numberOfLines={2}>
+                    {formData.image}
+                  </Text>
+                  <TouchableOpacity
+                    onPress={() => {
+                      console.log('Full image URL:', formData.image);
+                      Alert.alert('Image URL', formData.image);
+                    }}
+                    className="mt-1 px-2 py-1 bg-gray-200 rounded"
+                  >
+                    <Text className="text-xs text-gray-600">Debug URL</Text>
+                  </TouchableOpacity>
+                </View>
+              )}
+            </View>
+          </FieldGroup>
+
           <FieldGroup title="Product Details">
             <Input
               label="Title *"
@@ -266,41 +322,16 @@ export default function ProductFormScreen({ product, onClose, onSave }: ProductF
       label: 'Media',
       icon: <Feather name="image" size={20} color="#6B7280" />,
       content: (
-        <TabContent title="Media & Assets">
-          <FieldGroup title="Product Media">
-            <MediaManager
-              initialMedia={formData.medias}
-              onMediaChange={handleMediaChange}
-              maxItems={10}
-              allowMultiple={true}
-              prefix="products"
-              title="Product Images & Videos"
-              description="Upload high-quality images and videos to showcase your product"
-            />
-          </FieldGroup>
-
-          <FieldGroup title="Legacy Image URL">
-            <Input
-              label="Image URL (Optional)"
-              placeholder="https://example.com/image.jpg"
-              value={formData.image}
-              onChangeText={(value) => updateField('image', value)}
-              variant="outline"
-            />
-            <Text className="text-xs text-gray-500 mt-1">
-              This field is automatically updated when you upload media above
-            </Text>
-          </FieldGroup>
-
-          <FieldGroup title="QR Code">
-            <Input
-              label="QR Code"
-              placeholder="QR code data"
-              value={formData.qrcode}
-              onChangeText={(value) => updateField('qrcode', value)}
-              variant="outline"
-            />
-          </FieldGroup>
+        <TabContent title="Media">
+          <MediaManager
+            initialMedia={formData.medias}
+            onMediaChange={handleMediaChange}
+            maxItems={10}
+            allowMultiple={true}
+            prefix="products"
+            title=""
+            description=""
+          />
         </TabContent>
       ),
     },
@@ -381,6 +412,16 @@ export default function ProductFormScreen({ product, onClose, onSave }: ProductF
       icon: <Feather name="settings" size={20} color="#6B7280" />,
       content: (
         <TabContent title="Advanced Settings">
+          <FieldGroup title="QR Code">
+            <Input
+              label="QR Code"
+              placeholder="QR code data"
+              value={formData.qrcode}
+              onChangeText={(value) => updateField('qrcode', value)}
+              variant="outline"
+            />
+          </FieldGroup>
+
           <FieldGroup title="JSON Data">
             <Text className="text-sm text-gray-600 mb-4">
               Advanced configuration fields for options, modifiers, metadata, and more.

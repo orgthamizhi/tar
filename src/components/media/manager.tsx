@@ -84,13 +84,15 @@ export default function MediaManager({
 
   return (
     <View className="space-y-4">
-      {/* Header */}
-      <View>
-        <Text className="text-base font-medium text-gray-900 mb-1">{title}</Text>
-        {description && (
-          <Text className="text-sm text-gray-600">{description}</Text>
-        )}
-      </View>
+      {/* Header - only show if title or description provided */}
+      {(title || description) && (
+        <View>
+          {title && <Text className="text-base font-medium text-gray-900 mb-1">{title}</Text>}
+          {description && (
+            <Text className="text-sm text-gray-600">{description}</Text>
+          )}
+        </View>
+      )}
 
       {/* Media Gallery */}
       {media.length > 0 && (
@@ -104,19 +106,14 @@ export default function MediaManager({
 
       {/* Upload Section */}
       {showPicker && (
-        <View className="space-y-2">
-          {media.length > 0 && (
-            <Text className="text-sm font-medium text-gray-700">Add More Media</Text>
-          )}
-          <MediaPicker
-            onUploadStart={handleUploadStart}
-            onUploadComplete={handleUploadComplete}
-            allowMultiple={allowMultiple}
-            mediaTypes="Images"
-            prefix={prefix}
-            disabled={uploading || !canUploadMore}
-          />
-        </View>
+        <MediaPicker
+          onUploadStart={handleUploadStart}
+          onUploadComplete={handleUploadComplete}
+          allowMultiple={allowMultiple}
+          mediaTypes="Images"
+          prefix={prefix}
+          disabled={uploading || !canUploadMore}
+        />
       )}
 
       {/* Status Messages */}

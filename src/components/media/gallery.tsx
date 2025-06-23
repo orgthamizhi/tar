@@ -1,7 +1,8 @@
 import React from 'react';
-import { View, Text, TouchableOpacity, Image, Alert, ScrollView } from 'react-native';
+import { View, Text, TouchableOpacity, Alert, ScrollView } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
 import { r2Service } from '../../lib/r2-service';
+import R2Image from '../ui/r2-image';
 
 export interface MediaItem {
   url: string;
@@ -59,24 +60,24 @@ export default function MediaGallery({
 
   const renderMediaItem = (item: MediaItem, index: number) => {
     const isVideo = item.type?.startsWith('video/') || item.url.includes('.mp4');
-    
+
     return (
       <View key={index} className="relative">
-        <View className="aspect-square bg-gray-100 rounded-lg overflow-hidden">
+        <View className="aspect-square bg-gray-100 rounded overflow-hidden">
           {isVideo ? (
             <View className="flex-1 items-center justify-center bg-gray-200">
               <MaterialIcons name="play-circle-outline" size={32} color="#6B7280" />
               <Text className="text-xs text-gray-500 mt-1">Video</Text>
             </View>
           ) : (
-            <Image
-              source={{ uri: item.url }}
-              className="w-full h-full"
+            <R2Image
+              url={item.url}
+              style={{ width: '100%', height: '100%' }}
               resizeMode="cover"
             />
           )}
         </View>
-        
+
         {editable && (
           <TouchableOpacity
             onPress={() => handleRemove(index, item)}
@@ -84,12 +85,6 @@ export default function MediaGallery({
           >
             <MaterialIcons name="close" size={16} color="white" />
           </TouchableOpacity>
-        )}
-        
-        {index === 0 && media.length > 1 && (
-          <View className="absolute bottom-1 left-1 bg-blue-500 rounded px-2 py-1">
-            <Text className="text-white text-xs font-medium">Primary</Text>
-          </View>
         )}
       </View>
     );
@@ -104,9 +99,6 @@ export default function MediaGallery({
     );
   }
 
-  const itemWidth = `w-1/${columns}`;
-  const gap = columns === 2 ? 'gap-3' : 'gap-2';
-
   return (
     <View className="space-y-2">
       {maxItems && media.length > maxItems && (
@@ -116,15 +108,15 @@ export default function MediaGallery({
           </Text>
         </View>
       )}
-      
-      <ScrollView 
+
+      <ScrollView
         horizontal={false}
         showsVerticalScrollIndicator={false}
         className="max-h-96"
       >
-        <View className={`flex-row flex-wrap ${gap}`}>
+        <View className="flex-row flex-wrap gap-2">
           {media.slice(0, maxItems).map((item, index) => (
-            <View key={index} className={itemWidth}>
+            <View key={index} className="w-[32%]">
               {renderMediaItem(item, index)}
             </View>
           ))}
@@ -132,15 +124,10 @@ export default function MediaGallery({
       </ScrollView>
       
       {media.length > 0 && (
-        <View className="flex-row items-center justify-between pt-2">
+        <View className="pt-2">
           <Text className="text-sm text-gray-600">
             {media.length} media file{media.length !== 1 ? 's' : ''}
           </Text>
-          {media.length > 1 && (
-            <Text className="text-xs text-gray-500">
-              First image is used as primary
-            </Text>
-          )}
         </View>
       )}
     </View>

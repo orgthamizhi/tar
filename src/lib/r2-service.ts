@@ -1,4 +1,5 @@
-import { S3Client, PutObjectCommand, DeleteObjectCommand, HeadObjectCommand } from '@aws-sdk/client-s3';
+import { S3Client, PutObjectCommand, DeleteObjectCommand, HeadObjectCommand, GetObjectCommand } from '@aws-sdk/client-s3';
+import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import { r2Config, validateR2Config, generateFileKey, getPublicUrl } from './r2-config';
 
 export interface UploadResult {
@@ -173,6 +174,33 @@ class R2Service {
     } catch {
       return null;
     }
+  }
+
+  // Generate signed URL for reading files (for private buckets)
+  async getSignedUrl(key: string, expiresIn: number = 3600): Promise<string | null> {
+    if (!this.client) {
+      console.error('R2 client not initialized');
+      return null;
+    }
+
+    try {
+      const command = new GetObjectCommand({
+        Bucket: r2Config.bucketName,
+        Key: key,
+      });
+
+      const signedUrl = await getSignedUrl(this.client, command, { expiresIn });
+      return signedUrl;
+    } catch (error) {
+      console.error('Failed to generate signed URL:', error);
+      return null;
+    }
+  }
+
+  // Get accessible URL (signed URL for private buckets, public URL for public buckets)
+  async getAccessibleUrl(key: string): Promise<string | null> {
+    // For now, always use signed URLs since the bucket appears to be private
+    return this.getSignedUrl(key);
   }
 }
 

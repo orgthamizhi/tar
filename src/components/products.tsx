@@ -6,14 +6,17 @@ import { db, formatCurrency } from '../lib/instant';
 import ProductFormScreen from './prod-form';
 import InventoryAdjustmentScreen from './inventory';
 import { createSampleData } from '../lib/sample-data';
+import R2Image from './ui/r2-image';
 
 interface ProductsScreenProps {
   isGridView?: boolean;
+  onProductFormOpen?: (product?: any) => void;
+  onProductFormClose?: () => void;
 }
 
 type FilterStatus = 'All' | 'Active' | 'Draft' | 'Archived';
 
-export default function ProductsScreen({ isGridView = false }: ProductsScreenProps) {
+export default function ProductsScreen({ isGridView = false, onProductFormOpen, onProductFormClose }: ProductsScreenProps) {
   const insets = useSafeAreaInsets();
   const [showForm, setShowForm] = useState(false);
   const [showInventoryAdjustment, setShowInventoryAdjustment] = useState(false);
@@ -75,6 +78,7 @@ export default function ProductsScreen({ isGridView = false }: ProductsScreenPro
   const handleEdit = (product: any) => {
     setEditingProduct(product);
     setShowForm(true);
+    onProductFormOpen?.(product);
   };
 
   const handleInventoryAdjustment = (product: any) => {
@@ -85,6 +89,7 @@ export default function ProductsScreen({ isGridView = false }: ProductsScreenPro
   const handleAddNew = () => {
     setEditingProduct(null);
     setShowForm(true);
+    onProductFormOpen?.(null);
   };
 
   const handleLongPress = (product: any) => {
@@ -205,7 +210,10 @@ export default function ProductsScreen({ isGridView = false }: ProductsScreenPro
     return (
       <ProductFormScreen
         product={editingProduct}
-        onClose={() => setShowForm(false)}
+        onClose={() => {
+          setShowForm(false);
+          onProductFormClose?.();
+        }}
         onSave={() => {
           // Refresh will happen automatically due to real-time updates
         }}
@@ -377,8 +385,22 @@ export default function ProductsScreen({ isGridView = false }: ProductsScreenPro
                     )}
 
                     {/* Product Image */}
-                    <View className="w-12 h-12 bg-gray-200 rounded mr-3 items-center justify-center">
-                      <Text className="text-lg">📦</Text>
+                    <View className="w-12 h-12 bg-gray-200 mr-3 overflow-hidden">
+                      {product.image ? (
+                        <R2Image
+                          url={product.image}
+                          style={{ width: 48, height: 48 }}
+                          fallback={
+                            <View className="w-12 h-12 bg-gray-200 items-center justify-center">
+                              <Text className="text-lg">📦</Text>
+                            </View>
+                          }
+                        />
+                      ) : (
+                        <View className="w-12 h-12 bg-gray-200 items-center justify-center">
+                          <Text className="text-lg">📦</Text>
+                        </View>
+                      )}
                     </View>
 
                     {/* Product Info */}

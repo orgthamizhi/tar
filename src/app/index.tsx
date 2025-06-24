@@ -23,6 +23,8 @@ export default function Page() {
   const [showBottomTabs, setShowBottomTabs] = useState(true); // Start untoggled (bottom tabs shown, square icon not highlighted)
   const [isGridView, setIsGridView] = useState(false); // false = list view (default), true = grid view
   const [showManagement, setShowManagement] = useState(false); // false = product/collection list (default), true = management screen
+  const [productFormProduct, setProductFormProduct] = useState<any>(null); // Track product being edited in form
+  const [isProductFormOpen, setIsProductFormOpen] = useState(false); // Track if product form is open
 
   // Run complete migration process on app startup
   useEffect(() => {
@@ -97,7 +99,17 @@ export default function Page() {
       case 'reports':
         return <ReportsScreen onOpenMenu={() => handleNavigate('menu')} />;
       case 'products':
-        return <ProductsScreen isGridView={isGridView} />;
+        return <ProductsScreen
+          isGridView={isGridView}
+          onProductFormOpen={(product) => {
+            setProductFormProduct(product);
+            setIsProductFormOpen(true);
+          }}
+          onProductFormClose={() => {
+            setProductFormProduct(null);
+            setIsProductFormOpen(false);
+          }}
+        />;
       case 'collections':
         return <CollectionsScreen isGridView={isGridView} />;
       case 'menu':
@@ -127,6 +139,8 @@ export default function Page() {
             setIsGridView={setIsGridView}
             showManagement={showManagement}
             setShowManagement={setShowManagement}
+            productFormProduct={productFormProduct}
+            isProductFormOpen={isProductFormOpen}
           />
           {renderMainContent()}
           <BottomNavigation
@@ -283,7 +297,7 @@ function MenuScreen({ onNavigate }: { onNavigate: (screen: Screen) => void }) {
   );
 }
 
-function Header({ currentScreen, onNavigate, showBottomTabs, setShowBottomTabs, isGridView, setIsGridView, showManagement, setShowManagement }: {
+function Header({ currentScreen, onNavigate, showBottomTabs, setShowBottomTabs, isGridView, setIsGridView, showManagement, setShowManagement, productFormProduct, isProductFormOpen }: {
   currentScreen: Screen;
   onNavigate: (screen: Screen) => void;
   showBottomTabs: boolean;
@@ -292,10 +306,21 @@ function Header({ currentScreen, onNavigate, showBottomTabs, setShowBottomTabs, 
   setIsGridView: (isGrid: boolean) => void;
   showManagement: boolean;
   setShowManagement: (show: boolean) => void;
+  productFormProduct?: any;
+  isProductFormOpen?: boolean;
 }) {
   const insets = useSafeAreaInsets();
 
   const getScreenInfo = (screen: Screen) => {
+    // If product form is open, show product title
+    if (screen === 'products' && isProductFormOpen) {
+      const productTitle = productFormProduct?.title || '';
+      return {
+        title: `Products : ${productTitle}`,
+        icon: '📦'
+      };
+    }
+
     switch (screen) {
       case 'dashboard':
         return { title: 'Dashboard', icon: '🎈' };

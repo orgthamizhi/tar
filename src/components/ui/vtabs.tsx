@@ -1,5 +1,6 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, ScrollView } from 'react-native';
+import { MaterialIcons } from '@expo/vector-icons';
 
 export interface VerticalTab {
   id: string;
@@ -13,35 +14,83 @@ interface VerticalTabsProps {
   activeTab: string;
   onTabChange: (tabId: string) => void;
   className?: string;
+  hasChanges?: boolean;
+  onSave?: () => void;
+  onClose?: () => void;
+  loading?: boolean;
 }
 
-export default function VerticalTabs({ tabs, activeTab, onTabChange, className = '' }: VerticalTabsProps) {
+export default function VerticalTabs({
+  tabs,
+  activeTab,
+  onTabChange,
+  className = '',
+  hasChanges = false,
+  onSave,
+  onClose,
+  loading = false
+}: VerticalTabsProps) {
   const activeTabData = tabs.find(tab => tab.id === activeTab);
 
   return (
     <View className={`flex-1 flex-row ${className}`}>
       {/* Left sidebar with tabs */}
       <View className="w-16 bg-white border-r border-gray-200">
-        <ScrollView showsVerticalScrollIndicator={false}>
-          {tabs.map((tab) => {
-            const isActive = tab.id === activeTab;
-            return (
+        <View className="flex-1">
+          <ScrollView showsVerticalScrollIndicator={false}>
+            {tabs.map((tab) => {
+              const isActive = tab.id === activeTab;
+              return (
+                <TouchableOpacity
+                  key={tab.id}
+                  onPress={() => onTabChange(tab.id)}
+                  className={`
+                    h-16 items-center justify-center border-b border-gray-200
+                    ${isActive ? 'bg-blue-50 border-r-2 border-r-blue-500' : 'bg-transparent'}
+                  `}
+                  activeOpacity={0.7}
+                >
+                  <View className={`items-center ${isActive ? 'opacity-100' : 'opacity-60'}`}>
+                    {tab.icon}
+                  </View>
+                </TouchableOpacity>
+              );
+            })}
+          </ScrollView>
+        </View>
+
+        {/* Bottom action buttons */}
+        {(onSave || onClose) && (
+          <View className="border-t border-gray-200 bg-white">
+            {hasChanges && onSave && (
               <TouchableOpacity
-                key={tab.id}
-                onPress={() => onTabChange(tab.id)}
-                className={`
-                  h-16 items-center justify-center border-b border-gray-200
-                  ${isActive ? 'bg-blue-50 border-r-2 border-r-blue-500' : 'bg-transparent'}
-                `}
+                onPress={onSave}
+                disabled={loading}
+                className="h-16 items-center justify-center border-b border-gray-200"
                 activeOpacity={0.7}
               >
-                <View className={`items-center ${isActive ? 'opacity-100' : 'opacity-60'}`}>
-                  {tab.icon}
-                </View>
+                <MaterialIcons
+                  name="check"
+                  size={24}
+                  color={loading ? "#9CA3AF" : "#10B981"}
+                />
               </TouchableOpacity>
-            );
-          })}
-        </ScrollView>
+            )}
+            {onClose && (
+              <TouchableOpacity
+                onPress={onClose}
+                className="h-16 items-center justify-center"
+                activeOpacity={0.7}
+              >
+                <MaterialIcons
+                  name={hasChanges ? "keyboard-arrow-down" : "keyboard-arrow-down"}
+                  size={24}
+                  color="#6B7280"
+                />
+              </TouchableOpacity>
+            )}
+          </View>
+        )}
       </View>
 
       {/* Right content area */}

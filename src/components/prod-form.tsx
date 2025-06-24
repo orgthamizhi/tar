@@ -57,14 +57,16 @@ export default function ProductFormScreen({ product, onClose, onSave }: ProductF
   });
 
   const [loading, setLoading] = useState(false);
-  const [activeTab, setActiveTab] = useState('basic');
+  const [activeTab, setActiveTab] = useState('core');
   const [imageError, setImageError] = useState(false);
+  const [hasChanges, setHasChanges] = useState(false);
 
   const updateField = (field: string, value: any) => {
     if (field === 'image') {
       setImageError(false); // Reset image error when image URL changes
     }
     setFormData(prev => ({ ...prev, [field]: value }));
+    setHasChanges(true); // Mark that changes have been made
   };
 
   const handleMediaChange = useCallback((media: MediaItem[]) => {
@@ -75,6 +77,7 @@ export default function ProductFormScreen({ product, onClose, onSave }: ProductF
       // Update primary image URL for backward compatibility
       image: media.length > 0 ? media[0].url : '',
     }));
+    setHasChanges(true); // Mark that changes have been made
   }, []);
 
   const handleSave = async () => {
@@ -145,28 +148,100 @@ export default function ProductFormScreen({ product, onClose, onSave }: ProductF
     {
       id: 'core',
       label: 'Core',
-      icon: <MaterialIcons name="widgets" size={20} color="#6B7280" />,
+      icon: <Ionicons name="cube-outline" size={20} color="#6B7280" />,
       content: (
         <TabContent title="">
-          <View className="space-y-6">
-            <Input
-              label=""
-              placeholder="Product title"
+          {/* Notion-style title input */}
+          <View style={{ marginTop: 0 }}>
+            <TextInput
+              style={{
+                fontSize: 24,
+                fontWeight: '600',
+                color: '#000',
+                paddingVertical: 12,
+                paddingHorizontal: 0,
+                borderWidth: 0,
+                backgroundColor: 'transparent',
+              }}
               value={formData.title}
               onChangeText={(value) => updateField('title', value)}
-              variant="outline"
-              style={{ fontSize: 24, fontWeight: '600' }}
+              placeholder="Product title"
+              placeholderTextColor="#999"
             />
+          </View>
 
-            <View className="items-center">
-              <View
-                className="bg-gray-100 border-2 border-dashed border-gray-300 items-center justify-center overflow-hidden"
-                style={{ width: 200, height: 200 }}
-              >
+          {/* Tiles Container */}
+          <View style={{ marginTop: 16 }}>
+            {/* First Row: Price, Sale Price, Cost */}
+            <View style={{ flexDirection: 'row', marginBottom: 1 }}>
+              <View style={{
+                flex: 1,
+                backgroundColor: '#fff',
+                borderWidth: 1,
+                borderColor: '#E5E7EB',
+                borderRightWidth: 0,
+                paddingVertical: 16,
+                paddingHorizontal: 12,
+                alignItems: 'center',
+              }}>
+                <Text style={{ fontSize: 18, fontWeight: '600', color: '#111827' }}>
+                  ${parseFloat(formData.price || '0').toFixed(2)}
+                </Text>
+                <Text style={{ fontSize: 12, color: '#6B7280', marginTop: 4 }}>Price</Text>
+              </View>
+
+              <View style={{
+                flex: 1,
+                backgroundColor: '#fff',
+                borderWidth: 1,
+                borderColor: '#E5E7EB',
+                borderRightWidth: 0,
+                paddingVertical: 16,
+                paddingHorizontal: 12,
+                alignItems: 'center',
+              }}>
+                <Text style={{ fontSize: 18, fontWeight: '600', color: '#111827' }}>
+                  ${parseFloat(formData.saleprice || '0').toFixed(2)}
+                </Text>
+                <Text style={{ fontSize: 12, color: '#6B7280', marginTop: 4 }}>Sale Price</Text>
+              </View>
+
+              <View style={{
+                flex: 1,
+                backgroundColor: '#fff',
+                borderWidth: 1,
+                borderColor: '#E5E7EB',
+                paddingVertical: 16,
+                paddingHorizontal: 12,
+                alignItems: 'center',
+              }}>
+                <Text style={{ fontSize: 18, fontWeight: '600', color: '#111827' }}>
+                  ${parseFloat(formData.cost || '0').toFixed(2)}
+                </Text>
+                <Text style={{ fontSize: 12, color: '#6B7280', marginTop: 4 }}>Cost</Text>
+              </View>
+            </View>
+
+            {/* Divider */}
+            <View style={{ height: 8 }} />
+
+            {/* Second Row: Image, QR Code, Stock */}
+            <View style={{ flexDirection: 'row', marginBottom: 1 }}>
+              {/* Image Tile */}
+              <View style={{
+                flex: 1,
+                backgroundColor: '#fff',
+                borderWidth: 1,
+                borderColor: '#E5E7EB',
+                borderRightWidth: 0,
+                height: 120,
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}>
                 {formData.image && !imageError ? (
                   <R2Image
                     url={formData.image}
-                    style={{ width: 200, height: 200 }}
+                    style={{ width: '100%', height: '100%' }}
                     resizeMode="cover"
                     onError={(error) => {
                       console.log('R2Image load error:', error);
@@ -177,87 +252,245 @@ export default function ProductFormScreen({ product, onClose, onSave }: ProductF
                     }}
                   />
                 ) : (
-                  <View className="items-center">
-                    <MaterialIcons name="image" size={48} color="#9CA3AF" />
-                    <Text className="text-gray-500 text-sm mt-2 text-center">
-                      {formData.image && imageError ? 'Failed to load image' : 'No image selected'}
-                    </Text>
-                    <Text className="text-gray-400 text-xs mt-1 text-center">
-                      {formData.image && imageError ? 'Check image URL' : 'Upload in Media tab'}
+                  <View style={{ alignItems: 'center' }}>
+                    <MaterialIcons name="image" size={32} color="#9CA3AF" />
+                    <Text style={{ color: '#9CA3AF', fontSize: 10, marginTop: 4, textAlign: 'center' }}>
+                      Image
                     </Text>
                   </View>
                 )}
               </View>
+
+              {/* QR Code Tile */}
+              <View style={{
+                flex: 1,
+                backgroundColor: '#fff',
+                borderWidth: 1,
+                borderColor: '#E5E7EB',
+                borderRightWidth: 0,
+                height: 120,
+                alignItems: 'center',
+                justifyContent: 'center',
+                paddingVertical: 12,
+              }}>
+                <View style={{
+                  width: 40,
+                  height: 40,
+                  backgroundColor: '#F3F4F6',
+                  borderWidth: 1,
+                  borderColor: '#D1D5DB',
+                  marginBottom: 8,
+                  position: 'relative',
+                }}>
+                  {/* QR Pattern dots */}
+                  <View style={{ position: 'absolute', top: 2, left: 2, width: 4, height: 4, backgroundColor: '#000' }} />
+                  <View style={{ position: 'absolute', top: 2, right: 2, width: 4, height: 4, backgroundColor: '#000' }} />
+                  <View style={{ position: 'absolute', top: 8, left: 8, width: 4, height: 4, backgroundColor: '#000' }} />
+                  <View style={{ position: 'absolute', top: 8, right: 8, width: 4, height: 4, backgroundColor: '#000' }} />
+                  <View style={{ position: 'absolute', bottom: 2, left: 2, width: 4, height: 4, backgroundColor: '#000' }} />
+                  <View style={{ position: 'absolute', bottom: 2, right: 2, width: 4, height: 4, backgroundColor: '#000' }} />
+                  <View style={{ position: 'absolute', bottom: 8, left: 8, width: 4, height: 4, backgroundColor: '#000' }} />
+                  <View style={{ position: 'absolute', bottom: 8, right: 8, width: 4, height: 4, backgroundColor: '#000' }} />
+                </View>
+                <Text style={{ fontSize: 10, color: '#6B7280', textAlign: 'center' }}>
+                  {formData.qrcode || 'QR123456789'}
+                </Text>
+              </View>
+
+              {/* Stock Tile */}
+              <TouchableOpacity style={{
+                flex: 1,
+                backgroundColor: '#fff',
+                borderWidth: 1,
+                borderColor: '#E5E7EB',
+                height: 120,
+                alignItems: 'center',
+                justifyContent: 'center',
+                paddingVertical: 12,
+              }}>
+                <View style={{ flexDirection: 'row', alignItems: 'baseline' }}>
+                  <Text style={{ fontSize: 18, fontWeight: '600', color: '#111827' }}>
+                    {formData.stock || 0}
+                  </Text>
+                  <Text style={{ fontSize: 12, color: '#6B7280', marginLeft: 2 }}>
+                    {formData.unit || 'units'}
+                  </Text>
+                </View>
+                <Text style={{ fontSize: 12, color: '#6B7280', marginTop: 4 }}>Stock</Text>
+              </TouchableOpacity>
             </View>
 
-            <Input
-              label=""
-              placeholder="Short description"
-              value={formData.excerpt}
-              onChangeText={(value) => updateField('excerpt', value)}
-              variant="outline"
-              multiline
-              numberOfLines={2}
-            />
+            {/* Third Row: POS and Website Status */}
+            <View style={{ flexDirection: 'row' }}>
+              <TouchableOpacity
+                style={{
+                  flex: 1,
+                  backgroundColor: '#fff',
+                  borderWidth: 1,
+                  borderColor: '#E5E7EB',
+                  borderRightWidth: 0,
+                  paddingVertical: 16,
+                  paddingHorizontal: 12,
+                  alignItems: 'center',
+                }}
+                onPress={() => updateField('pos', !formData.pos)}
+              >
+                <Text style={{ fontSize: 12, color: '#6B7280', marginBottom: 4 }}>POS</Text>
+                <Text style={{ fontSize: 14, fontWeight: '500', color: '#111827' }}>
+                  {formData.pos ? 'Active' : 'Inactive'}
+                </Text>
+              </TouchableOpacity>
 
-            <Input
-              label=""
-              placeholder="Internal notes"
-              value={formData.notes}
-              onChangeText={(value) => updateField('notes', value)}
-              variant="outline"
-              multiline
-              numberOfLines={3}
-            />
+              <TouchableOpacity
+                style={{
+                  flex: 1,
+                  backgroundColor: '#fff',
+                  borderWidth: 1,
+                  borderColor: '#E5E7EB',
+                  paddingVertical: 16,
+                  paddingHorizontal: 12,
+                  alignItems: 'center',
+                }}
+                onPress={() => updateField('website', !formData.website)}
+              >
+                <Text style={{ fontSize: 12, color: '#6B7280', marginBottom: 4 }}>Website</Text>
+                <Text style={{ fontSize: 14, fontWeight: '500', color: '#111827' }}>
+                  {formData.website ? 'Active' : 'Inactive'}
+                </Text>
+              </TouchableOpacity>
+            </View>
           </View>
+        </TabContent>
+      ),
+    },
+    {
+      id: 'metafields',
+      label: 'Metafields',
+      icon: <MaterialIcons name="numbers" size={20} color="#6B7280" />,
+      content: (
+        <TabContent title="">
+          <View style={{ margin: -16, padding: 0 }}>
+            <View style={{
+              marginTop: 0,
+              marginBottom: 0,
+              paddingTop: 0,
+              marginHorizontal: 0,
+              borderTopWidth: 0
+            }}>
+              <TouchableOpacity
+                style={{
+                  backgroundColor: '#fff',
+                  borderBottomWidth: 1,
+                  borderBottomColor: '#E5E7EB',
+                  paddingVertical: 16,
+                  paddingHorizontal: 16,
+                  borderTopWidth: 0,
+                }}
+              >
+                <Text style={{ fontSize: 16, fontWeight: '500', color: '#111827' }}>Metafields</Text>
+                <Text style={{ fontSize: 14, color: '#6B7280', marginTop: 4 }}>
+                  Select metafields
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </TabContent>
+      ),
+    },
+    {
+      id: 'categorization',
+      label: 'Categorization',
+      icon: <Ionicons name="folder-outline" size={20} color="#6B7280" />,
+      content: (
+        <TabContent title="">
+          <View style={{ margin: -16, padding: 0 }}>
+            <View style={{
+              marginTop: 0,
+              marginBottom: 0,
+              paddingTop: 0,
+              marginHorizontal: 0,
+              borderTopWidth: 0
+            }}>
+              <TouchableOpacity
+                style={{
+                  backgroundColor: '#fff',
+                  borderBottomWidth: 1,
+                  borderBottomColor: '#E5E7EB',
+                  paddingVertical: 16,
+                  paddingHorizontal: 16,
+                  borderTopWidth: 0,
+                }}
+              >
+                <Text style={{ fontSize: 16, fontWeight: '500', color: '#111827' }}>Type</Text>
+                <Text style={{ fontSize: 14, color: '#6B7280', marginTop: 4 }}>
+                  {formData.type || 'Physical'}
+                </Text>
+              </TouchableOpacity>
 
-          <FieldGroup title="Classification">
-            <Input
-              label="Type"
-              placeholder="Product type"
-              value={formData.type}
-              onChangeText={(value) => updateField('type', value)}
-              variant="outline"
-            />
-            <Input
-              label="Category"
-              placeholder="Product category"
-              value={formData.category}
-              onChangeText={(value) => updateField('category', value)}
-              variant="outline"
-            />
-            <Input
-              label="Unit"
-              placeholder="Unit of measure"
-              value={formData.unit}
-              onChangeText={(value) => updateField('unit', value)}
-              variant="outline"
-            />
-          </FieldGroup>
+              <TouchableOpacity
+                style={{
+                  backgroundColor: '#fff',
+                  borderBottomWidth: 1,
+                  borderBottomColor: '#E5E7EB',
+                  paddingVertical: 16,
+                  paddingHorizontal: 16,
+                }}
+              >
+                <Text style={{ fontSize: 16, fontWeight: '500', color: '#111827' }}>Category</Text>
+                <Text style={{ fontSize: 14, color: '#6B7280', marginTop: 4 }}>
+                  {formData.category || 'Select category'}
+                </Text>
+              </TouchableOpacity>
 
-          <FieldGroup title="Brand & Vendor">
-            <Input
-              label="Vendor"
-              placeholder="Vendor name"
-              value={formData.vendor}
-              onChangeText={(value) => updateField('vendor', value)}
-              variant="outline"
-            />
-            <Input
-              label="Brand"
-              placeholder="Brand name"
-              value={formData.brand}
-              onChangeText={(value) => updateField('brand', value)}
-              variant="outline"
-            />
-            <Input
-              label="Tags"
-              placeholder="Comma-separated tags"
-              value={formData.tags}
-              onChangeText={(value) => updateField('tags', value)}
-              variant="outline"
-            />
-          </FieldGroup>
+              <TouchableOpacity
+                style={{
+                  backgroundColor: '#fff',
+                  borderBottomWidth: 1,
+                  borderBottomColor: '#E5E7EB',
+                  paddingVertical: 16,
+                  paddingHorizontal: 16,
+                }}
+              >
+                <Text style={{ fontSize: 16, fontWeight: '500', color: '#111827' }}>Vendor</Text>
+                <Text style={{ fontSize: 14, color: '#6B7280', marginTop: 4 }}>
+                  {formData.vendor || 'Select vendor'}
+                </Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={{
+                  backgroundColor: '#fff',
+                  borderBottomWidth: 1,
+                  borderBottomColor: '#E5E7EB',
+                  paddingVertical: 16,
+                  paddingHorizontal: 16,
+                }}
+              >
+                <Text style={{ fontSize: 16, fontWeight: '500', color: '#111827' }}>Brand</Text>
+                <Text style={{ fontSize: 14, color: '#6B7280', marginTop: 4 }}>
+                  {formData.brand || 'Select brand'}
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </TabContent>
+      ),
+    },
+    {
+      id: 'media',
+      label: 'Media',
+      icon: <Ionicons name="image-outline" size={20} color="#6B7280" />,
+      content: (
+        <TabContent title="">
+          <MediaManager
+            initialMedia={formData.medias}
+            onMediaChange={handleMediaChange}
+            maxItems={10}
+            allowMultiple={true}
+            prefix="products"
+            title=""
+            description=""
+          />
         </TabContent>
       ),
     },
@@ -266,10 +499,10 @@ export default function ProductFormScreen({ product, onClose, onSave }: ProductF
       label: 'Pricing',
       icon: <MaterialIcons name="attach-money" size={20} color="#6B7280" />,
       content: (
-        <TabContent title="Pricing Information">
+        <TabContent title="">
           <FieldGroup title="Prices">
-            <View className="flex-row space-x-4">
-              <View className="flex-1">
+            <View style={{ flexDirection: 'row', gap: 16 }}>
+              <View style={{ flex: 1 }}>
                 <Input
                   label="Price"
                   placeholder="0.00"
@@ -279,7 +512,7 @@ export default function ProductFormScreen({ product, onClose, onSave }: ProductF
                   variant="outline"
                 />
               </View>
-              <View className="flex-1">
+              <View style={{ flex: 1 }}>
                 <Input
                   label="Sale Price"
                   placeholder="0.00"
@@ -303,41 +536,30 @@ export default function ProductFormScreen({ product, onClose, onSave }: ProductF
       ),
     },
     {
-      id: 'media',
-      label: 'Media',
-      icon: <Feather name="image" size={20} color="#6B7280" />,
-      content: (
-        <TabContent title="Media">
-          <MediaManager
-            initialMedia={formData.medias}
-            onMediaChange={handleMediaChange}
-            maxItems={10}
-            allowMultiple={true}
-            prefix="products"
-            title=""
-            description=""
-          />
-        </TabContent>
-      ),
-    },
-    {
       id: 'inventory',
       label: 'Inventory',
-      icon: <MaterialIcons name="inventory" size={20} color="#6B7280" />,
+      icon: <Ionicons name="layers-outline" size={20} color="#6B7280" />,
       content: (
-        <TabContent title="Inventory Management">
+        <TabContent title="">
           <FieldGroup title="Stock">
-            <View className="flex-row items-center justify-between bg-gray-50 p-4 rounded-lg">
-              <Text className="text-base text-gray-900">Stock Quantity</Text>
+            <View style={{
+              flexDirection: 'row',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              backgroundColor: '#F9FAFB',
+              padding: 16,
+              borderRadius: 8
+            }}>
+              <Text style={{ fontSize: 16, color: '#111827' }}>Stock Quantity</Text>
               <QuantitySelector
                 value={formData.stock}
                 onValueChange={(value) => updateField('stock', value)}
                 size="medium"
               />
             </View>
-            <View className="bg-blue-50 p-4 rounded-lg">
-              <Text className="text-sm text-blue-800 font-medium">Stock Status</Text>
-              <Text className="text-blue-600 mt-1">
+            <View style={{ backgroundColor: '#EFF6FF', padding: 16, borderRadius: 8 }}>
+              <Text style={{ fontSize: 14, color: '#1E40AF', fontWeight: '500' }}>Stock Status</Text>
+              <Text style={{ color: '#2563EB', marginTop: 4 }}>
                 {formData.stock > 10 ? 'In Stock' : formData.stock > 0 ? 'Low Stock' : 'Out of Stock'}
               </Text>
             </View>
@@ -350,18 +572,18 @@ export default function ProductFormScreen({ product, onClose, onSave }: ProductF
       label: 'Settings',
       icon: <Ionicons name="settings-outline" size={20} color="#6B7280" />,
       content: (
-        <TabContent title="Product Settings">
+        <TabContent title="">
           <FieldGroup title="Availability">
-            <View className="space-y-4">
-              <View className="flex-row items-center justify-between">
-                <Text className="text-base text-gray-900">POS</Text>
+            <View style={{ gap: 16 }}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+                <Text style={{ fontSize: 16, color: '#111827' }}>POS</Text>
                 <Switch
                   value={formData.pos}
                   onValueChange={(value) => updateField('pos', value)}
                 />
               </View>
-              <View className="flex-row items-center justify-between">
-                <Text className="text-base text-gray-900">Website</Text>
+              <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+                <Text style={{ fontSize: 16, color: '#111827' }}>Website</Text>
                 <Switch
                   value={formData.website}
                   onValueChange={(value) => updateField('website', value)}
@@ -371,16 +593,16 @@ export default function ProductFormScreen({ product, onClose, onSave }: ProductF
           </FieldGroup>
 
           <FieldGroup title="Publishing">
-            <View className="space-y-4">
-              <View className="flex-row items-center justify-between">
-                <Text className="text-base text-gray-900">Published</Text>
+            <View style={{ gap: 16 }}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+                <Text style={{ fontSize: 16, color: '#111827' }}>Published</Text>
                 <Switch
                   value={formData.publish}
                   onValueChange={(value) => updateField('publish', value)}
                 />
               </View>
-              <View className="flex-row items-center justify-between">
-                <Text className="text-base text-gray-900">Featured</Text>
+              <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+                <Text style={{ fontSize: 16, color: '#111827' }}>Featured</Text>
                 <Switch
                   value={formData.featured}
                   onValueChange={(value) => updateField('featured', value)}
@@ -391,67 +613,20 @@ export default function ProductFormScreen({ product, onClose, onSave }: ProductF
         </TabContent>
       ),
     },
-    {
-      id: 'advanced',
-      label: 'Advanced',
-      icon: <Feather name="settings" size={20} color="#6B7280" />,
-      content: (
-        <TabContent title="Advanced Settings">
-          <FieldGroup title="QR Code">
-            <Input
-              label="QR Code"
-              placeholder="QR code data"
-              value={formData.qrcode}
-              onChangeText={(value) => updateField('qrcode', value)}
-              variant="outline"
-            />
-          </FieldGroup>
-
-          <FieldGroup title="JSON Data">
-            <Text className="text-sm text-gray-600 mb-4">
-              Advanced configuration fields for options, modifiers, metadata, and more.
-            </Text>
-            <View className="bg-gray-50 p-4 rounded-lg">
-              <Text className="text-sm font-medium text-gray-700 mb-2">Options, Modifiers & Metadata</Text>
-              <Text className="text-xs text-gray-500">
-                Configure product variants, modifiers, custom fields, SEO data, promotional info, and related products through the API or advanced interface.
-              </Text>
-            </View>
-          </FieldGroup>
-        </TabContent>
-      ),
-    },
   ];
 
   return (
-    <View className="flex-1 bg-gray-50">
-      {/* Header */}
-      <View className="bg-white border-b border-gray-200">
-        <View className="px-4 py-4">
-          <View className="flex-row items-center justify-between">
-            <Text className="text-lg font-semibold text-gray-900 flex-1">
-              {isEditing ? formData.title || 'Edit Product' : 'New Product'}
-            </Text>
-
-            <View className="flex-row items-center space-x-3">
-              <TouchableOpacity onPress={onClose}>
-                <MaterialIcons name="close" size={24} color="#6B7280" />
-              </TouchableOpacity>
-
-              <TouchableOpacity onPress={handleSave} disabled={loading}>
-                <MaterialIcons name="check" size={24} color={loading ? "#9CA3AF" : "#10B981"} />
-              </TouchableOpacity>
-            </View>
-          </View>
-        </View>
-      </View>
-
+    <View style={{ flex: 1, backgroundColor: '#F9FAFB' }}>
       {/* Vertical Tabs */}
       <VerticalTabs
         tabs={tabs}
         activeTab={activeTab}
         onTabChange={setActiveTab}
         className="flex-1"
+        hasChanges={hasChanges}
+        onSave={handleSave}
+        onClose={onClose}
+        loading={loading}
       />
     </View>
   );

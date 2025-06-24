@@ -1,6 +1,9 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { View, Text, TouchableOpacity, ScrollView } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import StoreSelector from './store-selector';
+import StoreForm from './store-form';
+import StoreManagement from './store-mgmt';
 
 type Screen = 'dashboard' | 'sales' | 'reports' | 'products' | 'collections' | 'menu';
 
@@ -11,48 +14,58 @@ interface FullScreenMenuProps {
 
 export default function FullScreenMenu({ onNavigate, onClose }: FullScreenMenuProps) {
   const insets = useSafeAreaInsets();
+  const [showStoreForm, setShowStoreForm] = useState(false);
+  const [showStoreManagement, setShowStoreManagement] = useState(false);
 
   const menuItems = [
     {
       id: 'dashboard',
       title: 'Dashboard',
-      subtitle: 'Sales metrics and analytics',
       icon: '🎈',
-      color: 'bg-blue-100',
     },
     {
       id: 'sales',
       title: 'Sales',
-      subtitle: 'Track sales performance',
       icon: '💰',
-      color: 'bg-green-100',
     },
     {
       id: 'reports',
       title: 'Reports',
-      subtitle: 'Real-time business reports',
       icon: '📈',
-      color: 'bg-purple-100',
     },
     {
       id: 'products',
       title: 'Products',
-      subtitle: 'Manage your product inventory',
       icon: '📦',
-      color: 'bg-orange-100',
     },
     {
       id: 'collections',
       title: 'Collections',
-      subtitle: 'Organize products into groups',
       icon: '🏷️',
-      color: 'bg-red-100',
     },
   ];
 
   const handleItemPress = (screenId: string) => {
     onNavigate(screenId as Screen);
   };
+
+  // Show store management screens
+  if (showStoreForm) {
+    return (
+      <StoreForm
+        onClose={() => setShowStoreForm(false)}
+        onSave={() => setShowStoreForm(false)}
+      />
+    );
+  }
+
+  if (showStoreManagement) {
+    return (
+      <StoreManagement
+        onClose={() => setShowStoreManagement(false)}
+      />
+    );
+  }
 
   return (
     <View className="flex-1 bg-white">
@@ -70,70 +83,48 @@ export default function FullScreenMenu({ onNavigate, onClose }: FullScreenMenuPr
 
       <ScrollView className="flex-1" showsVerticalScrollIndicator={false}>
         <View className="px-4 pt-8">
+          {/* Store Selector */}
+          <StoreSelector
+            onCreateStore={() => setShowStoreForm(true)}
+            onEditStores={() => setShowStoreManagement(true)}
+          />
           {/* Menu Items */}
-          <View className="gap-4 mb-8">
+          <View className="mb-8">
             {menuItems.map((item) => (
               <TouchableOpacity
                 key={item.id}
                 onPress={() => handleItemPress(item.id)}
-                className="bg-white border border-gray-200 rounded-xl p-6"
+                className="flex-row items-center py-4 border-b border-gray-100"
               >
-                <View className="flex-row items-center">
-                  <View className={`w-16 h-16 ${item.color} rounded-xl items-center justify-center mr-4`}>
-                    <Text className="text-3xl">{item.icon}</Text>
-                  </View>
-                  <View className="flex-1">
-                    <Text className="text-xl font-semibold text-gray-900 mb-1">
-                      {item.title}
-                    </Text>
-                    <Text className="text-gray-600">
-                      {item.subtitle}
-                    </Text>
-                  </View>
-                  <Text className="text-gray-400 text-2xl">›</Text>
-                </View>
+                <Text className="text-2xl mr-4">{item.icon}</Text>
+                <Text className="flex-1 text-lg font-medium text-gray-900">
+                  {item.title}
+                </Text>
+                <Text className="text-gray-400 text-xl">›</Text>
               </TouchableOpacity>
             ))}
           </View>
 
           {/* Additional Options */}
-          <View className="gap-4 mb-8">
-            <Text className="text-lg font-semibold text-gray-900 mb-2">Settings</Text>
-            
-            <TouchableOpacity className="bg-white border border-gray-200 rounded-xl p-4">
-              <View className="flex-row items-center justify-between">
-                <View className="flex-row items-center">
-                  <View className="w-10 h-10 bg-gray-100 rounded-lg items-center justify-center mr-3">
-                    <Text className="text-lg">⚙️</Text>
-                  </View>
-                  <Text className="text-base font-medium text-gray-900">App Settings</Text>
-                </View>
-                <Text className="text-gray-400 text-xl">›</Text>
-              </View>
+          <View className="mb-8">
+            <Text className="text-lg font-semibold text-gray-900 mb-4">Settings</Text>
+
+            <TouchableOpacity className="flex-row items-center py-4 border-b border-gray-100">
+              <Text className="text-lg mr-4">⚙️</Text>
+              <Text className="flex-1 text-base font-medium text-gray-900">App Settings</Text>
+              <Text className="text-gray-400 text-xl">›</Text>
             </TouchableOpacity>
 
-            <TouchableOpacity className="bg-white border border-gray-200 rounded-xl p-4">
-              <View className="flex-row items-center justify-between">
-                <View className="flex-row items-center">
-                  <View className="w-10 h-10 bg-gray-100 rounded-lg items-center justify-center mr-3">
-                    <Text className="text-lg">👤</Text>
-                  </View>
-                  <Text className="text-base font-medium text-gray-900">Account</Text>
-                </View>
-                <Text className="text-gray-400 text-xl">›</Text>
-              </View>
+            <TouchableOpacity className="flex-row items-center py-4 border-b border-gray-100">
+              <Text className="text-lg mr-4">👤</Text>
+              <Text className="flex-1 text-base font-medium text-gray-900">Account</Text>
+              <Text className="text-gray-400 text-xl">›</Text>
             </TouchableOpacity>
 
-            <TouchableOpacity className="bg-white border border-gray-200 rounded-xl p-4">
-              <View className="flex-row items-center justify-between">
-                <View className="flex-row items-center">
-                  <View className="w-10 h-10 bg-gray-100 rounded-lg items-center justify-center mr-3">
-                    <Text className="text-lg">❓</Text>
-                  </View>
-                  <Text className="text-base font-medium text-gray-900">Help & Support</Text>
-                </View>
-                <Text className="text-gray-400 text-xl">›</Text>
-              </View>
+            <TouchableOpacity className="flex-row items-center py-4 border-b border-gray-100">
+              <Text className="text-lg mr-4">❓</Text>
+              <Text className="flex-1 text-base font-medium text-gray-900">Help & Support</Text>
+              <Text className="text-gray-400 text-xl">›</Text>
             </TouchableOpacity>
           </View>
         </View>

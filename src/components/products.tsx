@@ -5,7 +5,8 @@ import { Feather, MaterialCommunityIcons } from '@expo/vector-icons';
 import { db, formatCurrency } from '../lib/instant';
 import ProductFormScreen from './prod-form';
 import InventoryAdjustmentScreen from './inventory';
-import { createSampleData } from '../lib/sample-data';
+import { useStore } from '../lib/store-context';
+
 import R2Image from './ui/r2-image';
 
 interface ProductsScreenProps {
@@ -18,6 +19,7 @@ type FilterStatus = 'All' | 'Active' | 'Draft' | 'Archived';
 
 export default function ProductsScreen({ isGridView = false, onProductFormOpen, onProductFormClose }: ProductsScreenProps) {
   const insets = useSafeAreaInsets();
+  const { currentStore } = useStore();
   const [showForm, setShowForm] = useState(false);
   const [showInventoryAdjustment, setShowInventoryAdjustment] = useState(false);
   const [showFilterModal, setShowFilterModal] = useState(false);
@@ -28,10 +30,18 @@ export default function ProductsScreen({ isGridView = false, onProductFormOpen, 
   const [showBottomDrawer, setShowBottomDrawer] = useState(false);
   const [isMultiSelectMode, setIsMultiSelectMode] = useState(false);
 
-  // Query products
-  const { isLoading, error, data } = db.useQuery({
-    products: {}
-  });
+  // Query products filtered by current store
+  const { isLoading, error, data } = db.useQuery(
+    currentStore?.id ? {
+      products: {
+        $: {
+          where: {
+            storeId: currentStore.id
+          }
+        }
+      }
+    } : { products: {} }
+  );
 
   const products = data?.products || [];
 
@@ -152,26 +162,7 @@ export default function ProductsScreen({ isGridView = false, onProductFormOpen, 
     setShowBottomDrawer(false);
   };
 
-  const handleCreateSampleData = async () => {
-    Alert.alert(
-      'Create Sample Data',
-      'This will add sample products to your database. Continue?',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Create',
-          onPress: async () => {
-            const result = await createSampleData();
-            if (result.success) {
-              Alert.alert('Success', 'Sample products created successfully!');
-            } else {
-              Alert.alert('Error', 'Failed to create sample data');
-            }
-          },
-        },
-      ]
-    );
-  };
+
 
   const handleDelete = (product: any) => {
     const productName = product.title || 'this product';
@@ -338,17 +329,9 @@ export default function ProductsScreen({ isGridView = false, onProductFormOpen, 
                 <Text className="text-2xl">📦</Text>
               </View>
               <Text className="text-lg font-medium text-gray-900 mb-2">No products found</Text>
-              <Text className="text-gray-500 text-center mb-6">
+              <Text className="text-gray-500 text-center">
                 {searchQuery ? 'Try adjusting your search' : 'Add your first product to get started'}
               </Text>
-              {!searchQuery && products.length === 0 && (
-                <TouchableOpacity
-                  onPress={handleCreateSampleData}
-                  className="bg-blue-600 px-6 py-3 rounded-lg mb-4"
-                >
-                  <Text className="text-white font-medium">Create Sample Products</Text>
-                </TouchableOpacity>
-              )}
             </View>
           </View>
         ) : (

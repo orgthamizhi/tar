@@ -14,6 +14,7 @@ import BottomNavigation, { BottomTab, MainScreen } from "../components/nav";
 import BottomTabContent from "../components/tabs";
 import { runMigrationIfNeeded } from "../lib/migrate-products";
 import { completeMigrationProcess } from "../lib/cleanup-legacy";
+import { StoreProvider } from "../lib/store-context";
 
 type Screen = 'dashboard' | 'sales' | 'reports' | 'products' | 'collections' | 'menu';
 
@@ -123,34 +124,36 @@ export default function Page() {
   };
 
   return (
-    <View className="flex flex-1">
-      {currentScreen === 'menu' ? (
-        // Menu screen without header or bottom navigation
-        renderMainContent()
-      ) : (
-        // All other screens with header and bottom navigation
-        <>
-          <Header
-            currentScreen={currentScreen}
-            onNavigate={handleNavigate}
-            showBottomTabs={showBottomTabs}
-            setShowBottomTabs={setShowBottomTabs}
-            isGridView={isGridView}
-            setIsGridView={setIsGridView}
-            showManagement={showManagement}
-            setShowManagement={setShowManagement}
-            productFormProduct={productFormProduct}
-            isProductFormOpen={isProductFormOpen}
-          />
-          {renderMainContent()}
-          <BottomNavigation
-            activeTab={activeBottomTab}
-            onTabPress={handleBottomTabPress}
-            currentScreen={currentScreen as MainScreen}
-          />
-        </>
-      )}
-    </View>
+    <StoreProvider>
+      <View className="flex flex-1">
+        {currentScreen === 'menu' ? (
+          // Menu screen without header or bottom navigation
+          renderMainContent()
+        ) : (
+          // All other screens with header and bottom navigation
+          <>
+            <Header
+              currentScreen={currentScreen}
+              onNavigate={handleNavigate}
+              showBottomTabs={showBottomTabs}
+              setShowBottomTabs={setShowBottomTabs}
+              isGridView={isGridView}
+              setIsGridView={setIsGridView}
+              showManagement={showManagement}
+              setShowManagement={setShowManagement}
+              productFormProduct={productFormProduct}
+              isProductFormOpen={isProductFormOpen}
+            />
+            {renderMainContent()}
+            <BottomNavigation
+              activeTab={activeBottomTab}
+              onTabPress={handleBottomTabPress}
+              currentScreen={currentScreen as MainScreen}
+            />
+          </>
+        )}
+      </View>
+    </StoreProvider>
   );
 }
 

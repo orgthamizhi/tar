@@ -6,17 +6,34 @@ import MetricCard from './ui/metric';
 import Button from './ui/Button';
 import SimpleChart from './ui/chart';
 import { db, formatCurrency } from '../lib/instant';
+import { useStore } from '../lib/store-context';
 
 interface DashboardScreenProps {
   onOpenMenu?: () => void;
 }
 
 export default function DashboardScreen({ onOpenMenu }: DashboardScreenProps) {
-  // Query products for metrics
-  const { data } = db.useQuery({
-    products: {},
-    collections: {}
-  });
+  const { currentStore } = useStore();
+
+  // Query products for metrics filtered by current store
+  const { data } = db.useQuery(
+    currentStore?.id ? {
+      products: {
+        $: {
+          where: {
+            storeId: currentStore.id
+          }
+        }
+      },
+      collections: {
+        $: {
+          where: {
+            storeId: currentStore.id
+          }
+        }
+      }
+    } : { products: {}, collections: {} }
+  );
 
   const products = data?.products || [];
   const collections = data?.collections || [];

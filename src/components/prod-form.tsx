@@ -11,6 +11,7 @@ import VerticalTabs, { TabContent, FieldGroup, VerticalTab } from './ui/vtabs';
 import R2Image from './ui/r2-image';
 import { db, getCurrentTimestamp } from '../lib/instant';
 import { MediaManager, MediaItem } from './media';
+import { useStore } from '../lib/store-context';
 
 interface ProductFormScreenProps {
   product?: any;
@@ -20,18 +21,22 @@ interface ProductFormScreenProps {
 
 export default function ProductFormScreen({ product, onClose, onSave }: ProductFormScreenProps) {
   const insets = useSafeAreaInsets();
+  const { currentStore } = useStore();
   const isEditing = !!product;
 
   const [formData, setFormData] = useState({
-    // Use only new schema fields - legacy fields removed after migration
-    title: product?.title || '',
+    // Updated to match current schema fields
+    title: product?.title || product?.name || '',
+    name: product?.name || product?.title || '',
     image: product?.image || '',
     medias: product?.medias || [],
+    description: product?.description || '',
     excerpt: product?.excerpt || '',
     notes: product?.notes || '',
     type: product?.type || '',
     category: product?.category || '',
     unit: product?.unit || '',
+    sku: product?.sku || '',
     price: product?.price?.toString() || '',
     saleprice: product?.saleprice?.toString() || '',
     vendor: product?.vendor || '',
@@ -43,6 +48,7 @@ export default function ProductFormScreen({ product, onClose, onSave }: ProductF
     stores: product?.stores || null,
     pos: product?.pos ?? false,
     website: product?.website ?? false,
+    isActive: product?.isActive ?? true,
     seo: product?.seo || null,
     tags: product?.tags || '',
     cost: product?.cost?.toString() || '',
@@ -54,6 +60,7 @@ export default function ProductFormScreen({ product, onClose, onSave }: ProductF
     featured: product?.featured ?? false,
     relproducts: product?.relproducts || null,
     sellproducts: product?.sellproducts || null,
+    storeId: product?.storeId || currentStore?.id || '', // Use current store ID
   });
 
   const [loading, setLoading] = useState(false);
@@ -81,8 +88,13 @@ export default function ProductFormScreen({ product, onClose, onSave }: ProductF
   }, []);
 
   const handleSave = async () => {
-    if (!formData.title.trim()) {
-      Alert.alert('Error', 'Product title is required');
+    if (!formData.title.trim() && !formData.name.trim()) {
+      Alert.alert('Error', 'Product title/name is required');
+      return;
+    }
+
+    if (!currentStore?.id) {
+      Alert.alert('Error', 'Please select a store first');
       return;
     }
 
@@ -90,19 +102,27 @@ export default function ProductFormScreen({ product, onClose, onSave }: ProductF
     try {
       const timestamp = getCurrentTimestamp();
       const productData: any = {
-        title: formData.title.trim(),
+        // Required fields
+        storeId: formData.storeId,
         updatedAt: timestamp,
         ...(isEditing ? {} : { createdAt: timestamp }),
       };
 
+      // Add title/name (use title if available, fallback to name)
+      const productTitle = formData.title.trim() || formData.name.trim();
+      productData.title = productTitle;
+      productData.name = productTitle;
+
       // Add optional fields if they have values
       if (formData.image) productData.image = formData.image;
       if (formData.medias && formData.medias.length > 0) productData.medias = formData.medias;
+      if (formData.description) productData.description = formData.description.trim();
       if (formData.excerpt) productData.excerpt = formData.excerpt.trim();
       if (formData.notes) productData.notes = formData.notes.trim();
       if (formData.type) productData.type = formData.type.trim();
       if (formData.category) productData.category = formData.category.trim();
       if (formData.unit) productData.unit = formData.unit.trim();
+      if (formData.sku) productData.sku = formData.sku.trim();
       if (formData.price) productData.price = parseFloat(formData.price) || 0;
       if (formData.saleprice) productData.saleprice = parseFloat(formData.saleprice) || 0;
       if (formData.vendor) productData.vendor = formData.vendor.trim();
@@ -112,21 +132,23 @@ export default function ProductFormScreen({ product, onClose, onSave }: ProductF
       if (formData.metafields) productData.metafields = formData.metafields;
       if (formData.saleinfo) productData.saleinfo = formData.saleinfo;
       if (formData.stores) productData.stores = formData.stores;
+
+      // Boolean fields
       productData.pos = formData.pos;
       productData.website = formData.website;
+      productData.isActive = formData.isActive;
+      productData.publish = formData.publish;
+      productData.featured = formData.featured;
+
       if (formData.seo) productData.seo = formData.seo;
       if (formData.tags) productData.tags = formData.tags.trim();
       if (formData.cost) productData.cost = parseFloat(formData.cost) || 0;
       if (formData.qrcode) productData.qrcode = formData.qrcode.trim();
       if (formData.stock !== undefined) productData.stock = formData.stock;
       if (formData.publishAt) productData.publishAt = formData.publishAt;
-      productData.publish = formData.publish;
       if (formData.promoinfo) productData.promoinfo = formData.promoinfo;
-      productData.featured = formData.featured;
       if (formData.relproducts) productData.relproducts = formData.relproducts;
       if (formData.sellproducts) productData.sellproducts = formData.sellproducts;
-
-      // Legacy fields removed after migration completion
 
       if (isEditing) {
         await db.transact(db.tx.products[product.id].update(productData));
@@ -137,6 +159,7 @@ export default function ProductFormScreen({ product, onClose, onSave }: ProductF
       onSave?.();
       onClose();
     } catch (error) {
+      console.error('Save error:', error);
       Alert.alert('Error', 'Failed to save product');
     } finally {
       setLoading(false);
@@ -164,9 +187,30 @@ export default function ProductFormScreen({ product, onClose, onSave }: ProductF
                 backgroundColor: 'transparent',
               }}
               value={formData.title}
-              onChangeText={(value) => updateField('title', value)}
+              onChangeText={(value) => {
+                updateField('title', value);
+                updateField('name', value); // Keep both in sync
+              }}
               placeholder="Product title"
               placeholderTextColor="#999"
+            />
+
+            {/* Description field */}
+            <TextInput
+              style={{
+                fontSize: 16,
+                color: '#6B7280',
+                paddingVertical: 8,
+                paddingHorizontal: 0,
+                borderWidth: 0,
+                backgroundColor: 'transparent',
+                marginTop: 4,
+              }}
+              value={formData.description}
+              onChangeText={(value) => updateField('description', value)}
+              placeholder="Add a description..."
+              placeholderTextColor="#9CA3AF"
+              multiline
             />
           </View>
 
@@ -261,7 +305,7 @@ export default function ProductFormScreen({ product, onClose, onSave }: ProductF
                 )}
               </View>
 
-              {/* QR Code Tile */}
+              {/* SKU Tile */}
               <View style={{
                 flex: 1,
                 backgroundColor: '#fff',
@@ -272,28 +316,14 @@ export default function ProductFormScreen({ product, onClose, onSave }: ProductF
                 alignItems: 'center',
                 justifyContent: 'center',
                 paddingVertical: 12,
+                paddingHorizontal: 8,
               }}>
-                <View style={{
-                  width: 40,
-                  height: 40,
-                  backgroundColor: '#F3F4F6',
-                  borderWidth: 1,
-                  borderColor: '#D1D5DB',
-                  marginBottom: 8,
-                  position: 'relative',
-                }}>
-                  {/* QR Pattern dots */}
-                  <View style={{ position: 'absolute', top: 2, left: 2, width: 4, height: 4, backgroundColor: '#000' }} />
-                  <View style={{ position: 'absolute', top: 2, right: 2, width: 4, height: 4, backgroundColor: '#000' }} />
-                  <View style={{ position: 'absolute', top: 8, left: 8, width: 4, height: 4, backgroundColor: '#000' }} />
-                  <View style={{ position: 'absolute', top: 8, right: 8, width: 4, height: 4, backgroundColor: '#000' }} />
-                  <View style={{ position: 'absolute', bottom: 2, left: 2, width: 4, height: 4, backgroundColor: '#000' }} />
-                  <View style={{ position: 'absolute', bottom: 2, right: 2, width: 4, height: 4, backgroundColor: '#000' }} />
-                  <View style={{ position: 'absolute', bottom: 8, left: 8, width: 4, height: 4, backgroundColor: '#000' }} />
-                  <View style={{ position: 'absolute', bottom: 8, right: 8, width: 4, height: 4, backgroundColor: '#000' }} />
-                </View>
-                <Text style={{ fontSize: 10, color: '#6B7280', textAlign: 'center' }}>
-                  {formData.qrcode || 'QR123456789'}
+                <MaterialIcons name="qr-code" size={32} color="#9CA3AF" />
+                <Text style={{ fontSize: 10, color: '#6B7280', textAlign: 'center', marginTop: 4 }}>
+                  SKU
+                </Text>
+                <Text style={{ fontSize: 12, color: '#111827', textAlign: 'center', marginTop: 2, fontWeight: '500' }}>
+                  {formData.sku || 'Auto-generated'}
                 </Text>
               </View>
 
@@ -500,6 +530,23 @@ export default function ProductFormScreen({ product, onClose, onSave }: ProductF
       icon: <MaterialIcons name="attach-money" size={20} color="#6B7280" />,
       content: (
         <TabContent title="">
+          <FieldGroup title="Product Details">
+            <Input
+              label="SKU"
+              placeholder="Enter SKU"
+              value={formData.sku}
+              onChangeText={(value) => updateField('sku', value)}
+              variant="outline"
+            />
+            <Input
+              label="Unit"
+              placeholder="e.g., pieces, kg, liters"
+              value={formData.unit}
+              onChangeText={(value) => updateField('unit', value)}
+              variant="outline"
+            />
+          </FieldGroup>
+
           <FieldGroup title="Prices">
             <View style={{ flexDirection: 'row', gap: 16 }}>
               <View style={{ flex: 1 }}>
@@ -575,6 +622,13 @@ export default function ProductFormScreen({ product, onClose, onSave }: ProductF
         <TabContent title="">
           <FieldGroup title="Availability">
             <View style={{ gap: 16 }}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+                <Text style={{ fontSize: 16, color: '#111827' }}>Active</Text>
+                <Switch
+                  value={formData.isActive}
+                  onValueChange={(value) => updateField('isActive', value)}
+                />
+              </View>
               <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
                 <Text style={{ fontSize: 16, color: '#111827' }}>POS</Text>
                 <Switch

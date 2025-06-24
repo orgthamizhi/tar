@@ -21,7 +21,7 @@ export default function VerticalTabs({ tabs, activeTab, onTabChange, className =
   return (
     <View className={`flex-1 flex-row ${className}`}>
       {/* Left sidebar with tabs */}
-      <View className="w-16 bg-gray-50 border-r border-gray-200">
+      <View className="w-16 bg-white border-r border-gray-200">
         <ScrollView showsVerticalScrollIndicator={false}>
           {tabs.map((tab) => {
             const isActive = tab.id === activeTab;

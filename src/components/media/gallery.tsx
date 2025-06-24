@@ -1,5 +1,5 @@
-import React from 'react';
-import { View, Text, TouchableOpacity, Alert, ScrollView } from 'react-native';
+import React, { useState } from 'react';
+import { View, Text, TouchableOpacity, Alert, ScrollView, Modal } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
 import { r2Service } from '../../lib/r2-service';
 import R2Image from '../ui/r2-image';
@@ -18,6 +18,9 @@ interface MediaGalleryProps {
   maxItems?: number;
   editable?: boolean;
   columns?: number;
+  showUpload?: boolean;
+  onUploadPress?: () => void;
+  uploading?: boolean;
 }
 
 export default function MediaGallery({
@@ -27,43 +30,56 @@ export default function MediaGallery({
   maxItems,
   editable = true,
   columns = 3,
+  showUpload = false,
+  onUploadPress,
+  uploading = false,
 }: MediaGalleryProps) {
-  const handleRemove = async (index: number, item: MediaItem) => {
-    if (!editable) return;
+  const [selectedItem, setSelectedItem] = useState<{ item: MediaItem; index: number } | null>(null);
+  const [showDrawer, setShowDrawer] = useState(false);
 
-    Alert.alert(
-      'Remove Media',
-      'Are you sure you want to remove this media?',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Remove',
-          style: 'destructive',
-          onPress: async () => {
-            // Try to delete from R2 if we have the key
-            if (item.key) {
-              await r2Service.deleteFile(item.key);
-            } else if (item.url) {
-              // Extract key from URL
-              const key = r2Service.extractKeyFromUrl(item.url);
-              if (key) {
-                await r2Service.deleteFile(key);
-              }
-            }
-            
-            onRemove?.(index, item);
-          },
-        },
-      ]
-    );
+  const handleItemPress = (item: MediaItem, index: number) => {
+    if (!editable) return;
+    setSelectedItem({ item, index });
+    setShowDrawer(true);
+  };
+
+  const handleRemove = async () => {
+    if (!selectedItem) return;
+
+    const { item, index } = selectedItem;
+
+    // Try to delete from R2 if we have the key
+    if (item.key) {
+      await r2Service.deleteFile(item.key);
+    } else if (item.url) {
+      // Extract key from URL
+      const key = r2Service.extractKeyFromUrl(item.url);
+      if (key) {
+        await r2Service.deleteFile(key);
+      }
+    }
+
+    onRemove?.(index, item);
+    setShowDrawer(false);
+    setSelectedItem(null);
+  };
+
+  const handleChange = () => {
+    // TODO: Implement change functionality
+    setShowDrawer(false);
+    setSelectedItem(null);
   };
 
   const renderMediaItem = (item: MediaItem, index: number) => {
     const isVideo = item.type?.startsWith('video/') || item.url.includes('.mp4');
 
     return (
-      <View key={index} className="relative">
-        <View className="aspect-square bg-gray-100 rounded overflow-hidden">
+      <TouchableOpacity
+        key={index}
+        onPress={() => handleItemPress(item, index)}
+        activeOpacity={0.8}
+      >
+        <View className="aspect-square bg-gray-100 overflow-hidden">
           {isVideo ? (
             <View className="flex-1 items-center justify-center bg-gray-200">
               <MaterialIcons name="play-circle-outline" size={32} color="#6B7280" />
@@ -77,22 +93,32 @@ export default function MediaGallery({
             />
           )}
         </View>
-
-        {editable && (
-          <TouchableOpacity
-            onPress={() => handleRemove(index, item)}
-            className="absolute -top-2 -right-2 bg-red-500 rounded-full p-1"
-          >
-            <MaterialIcons name="close" size={16} color="white" />
-          </TouchableOpacity>
-        )}
-      </View>
+      </TouchableOpacity>
     );
   };
 
-  if (!media || media.length === 0) {
+  const renderUploadTile = () => (
+    <TouchableOpacity
+      onPress={onUploadPress}
+      className="aspect-square bg-gray-100 items-center justify-center"
+      disabled={uploading}
+    >
+      {uploading ? (
+        <MaterialIcons name="hourglass-empty" size={32} color="#9CA3AF" />
+      ) : (
+        <MaterialIcons name="add" size={32} color="#9CA3AF" />
+      )}
+    </TouchableOpacity>
+  );
+
+  const allItems = [...media];
+  if (showUpload) {
+    allItems.push({ url: 'upload', type: 'upload' } as MediaItem);
+  }
+
+  if (!media || (media.length === 0 && !showUpload)) {
     return (
-      <View className="bg-gray-50 border border-gray-200 rounded-lg p-4 items-center">
+      <View className="bg-gray-50 border border-gray-200 p-4 items-center">
         <MaterialIcons name="photo" size={24} color="#9CA3AF" />
         <Text className="text-gray-500 text-sm mt-1">No media uploaded</Text>
       </View>
@@ -114,10 +140,10 @@ export default function MediaGallery({
         showsVerticalScrollIndicator={false}
         className="max-h-96"
       >
-        <View className="flex-row flex-wrap gap-2">
-          {media.slice(0, maxItems).map((item, index) => (
-            <View key={index} className="w-[32%]">
-              {renderMediaItem(item, index)}
+        <View className="flex-row flex-wrap">
+          {allItems.slice(0, maxItems ? maxItems + (showUpload ? 1 : 0) : undefined).map((item, index) => (
+            <View key={index} className="w-1/3">
+              {item.url === 'upload' ? renderUploadTile() : renderMediaItem(item, index)}
             </View>
           ))}
         </View>
@@ -130,6 +156,49 @@ export default function MediaGallery({
           </Text>
         </View>
       )}
+
+      {/* Bottom Drawer Modal */}
+      <Modal
+        visible={showDrawer}
+        transparent={true}
+        animationType="slide"
+        onRequestClose={() => setShowDrawer(false)}
+      >
+        <View className="flex-1 justify-end bg-black/50">
+          <View className="bg-white">
+            <View className="p-4 border-b border-gray-200">
+              <Text className="text-lg font-medium text-gray-900">Media Options</Text>
+            </View>
+
+            <View className="p-4 space-y-4">
+              <TouchableOpacity
+                onPress={handleChange}
+                className="flex-row items-center py-3"
+              >
+                <MaterialIcons name="edit" size={24} color="#6B7280" />
+                <Text className="text-base text-gray-900 ml-3">Change</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                onPress={handleRemove}
+                className="flex-row items-center py-3"
+              >
+                <MaterialIcons name="delete" size={24} color="#EF4444" />
+                <Text className="text-base text-red-600 ml-3">Delete</Text>
+              </TouchableOpacity>
+            </View>
+
+            <View className="p-4 border-t border-gray-200">
+              <TouchableOpacity
+                onPress={() => setShowDrawer(false)}
+                className="py-3 items-center"
+              >
+                <Text className="text-base text-gray-600">Cancel</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }

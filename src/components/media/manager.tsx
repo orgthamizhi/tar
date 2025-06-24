@@ -1,9 +1,9 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { View, Text } from 'react-native';
+import { View, Text, Alert } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import MediaPicker from './picker';
 import MediaGallery, { MediaItem } from './gallery';
-import { UploadResult } from '../../lib/r2-service';
+import { UploadResult, r2Service, MediaFile } from '../../lib/r2-service';
 
 interface MediaManagerProps {
   initialMedia?: MediaItem[];
@@ -79,8 +79,55 @@ export default function MediaManager({
     updateMedia(newMedia);
   };
 
+  const handleUploadPress = async () => {
+    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (status !== 'granted') {
+      Alert.alert(
+        'Permission Required',
+        'Please grant camera roll permissions to upload images.'
+      );
+      return;
+    }
+
+    try {
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsMultipleSelection: allowMultiple,
+        quality: 0.8,
+        maxWidth: 1920,
+        maxHeight: 1920,
+        exif: false,
+      });
+
+      if (!result.canceled && result.assets.length > 0) {
+        setUploading(true);
+
+        for (const asset of result.assets) {
+          const mediaFile: MediaFile = {
+            uri: asset.uri,
+            name: asset.fileName || `image_${Date.now()}.jpg`,
+            type: asset.type === 'video' ? 'video/mp4' : 'image/jpeg',
+            size: asset.fileSize,
+          };
+
+          const uploadResult = await r2Service.uploadFile(mediaFile, prefix);
+          handleUploadComplete(uploadResult);
+
+          if (!uploadResult.success) {
+            Alert.alert('Upload Failed', uploadResult.error || 'Unknown error occurred');
+          }
+        }
+
+        setUploading(false);
+      }
+    } catch (error) {
+      Alert.alert('Error', 'Failed to pick image');
+      setUploading(false);
+    }
+  };
+
   const canUploadMore = !maxItems || media.length < maxItems;
-  const showPicker = canUploadMore && (allowMultiple || media.length === 0);
+  const showPicker = canUploadMore;
 
   return (
     <View className="space-y-4">
@@ -94,31 +141,20 @@ export default function MediaManager({
         </View>
       )}
 
-      {/* Media Gallery */}
-      {media.length > 0 && (
-        <MediaGallery
-          media={media}
-          onRemove={handleRemoveMedia}
-          maxItems={maxItems}
-          editable={true}
-        />
-      )}
-
-      {/* Upload Section */}
-      {showPicker && (
-        <MediaPicker
-          onUploadStart={handleUploadStart}
-          onUploadComplete={handleUploadComplete}
-          allowMultiple={allowMultiple}
-          mediaTypes="Images"
-          prefix={prefix}
-          disabled={uploading || !canUploadMore}
-        />
-      )}
+      {/* Combined Media Gallery with Upload Tile */}
+      <MediaGallery
+        media={media}
+        onRemove={handleRemoveMedia}
+        maxItems={maxItems}
+        editable={true}
+        showUpload={showPicker && !uploading && canUploadMore}
+        onUploadPress={handleUploadPress}
+        uploading={uploading}
+      />
 
       {/* Status Messages */}
       {maxItems && media.length >= maxItems && (
-        <View className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+        <View className="bg-blue-50 border border-blue-200 p-3">
           <Text className="text-blue-800 text-sm">
             Maximum of {maxItems} media files reached
           </Text>
@@ -126,7 +162,7 @@ export default function MediaManager({
       )}
 
       {uploading && (
-        <View className="bg-gray-50 border border-gray-200 rounded-lg p-3">
+        <View className="bg-gray-50 border border-gray-200 p-3">
           <Text className="text-gray-700 text-sm">
             Uploading media to cloud storage...
           </Text>

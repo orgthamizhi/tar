@@ -145,13 +145,22 @@ export default function ProductFormScreen({ product, onClose, onSave }: ProductF
     {
       id: 'core',
       label: 'Core',
-      icon: <MaterialIcons name="inventory-2" size={20} color="#6B7280" />,
+      icon: <MaterialIcons name="widgets" size={20} color="#6B7280" />,
       content: (
-        <TabContent title="Basic Information">
-          <FieldGroup title="Product Image">
+        <TabContent title="">
+          <View className="space-y-6">
+            <Input
+              label=""
+              placeholder="Product title"
+              value={formData.title}
+              onChangeText={(value) => updateField('title', value)}
+              variant="outline"
+              style={{ fontSize: 24, fontWeight: '600' }}
+            />
+
             <View className="items-center">
               <View
-                className="bg-gray-100 rounded-lg border-2 border-dashed border-gray-300 items-center justify-center overflow-hidden"
+                className="bg-gray-100 border-2 border-dashed border-gray-300 items-center justify-center overflow-hidden"
                 style={{ width: 200, height: 200 }}
               >
                 {formData.image && !imageError ? (
@@ -179,35 +188,10 @@ export default function ProductFormScreen({ product, onClose, onSave }: ProductF
                   </View>
                 )}
               </View>
-              {formData.image && (
-                <View className="mt-2 items-center">
-                  <Text className="text-xs text-gray-500 text-center" style={{ maxWidth: 200 }} numberOfLines={2}>
-                    {formData.image}
-                  </Text>
-                  <TouchableOpacity
-                    onPress={() => {
-                      console.log('Full image URL:', formData.image);
-                      Alert.alert('Image URL', formData.image);
-                    }}
-                    className="mt-1 px-2 py-1 bg-gray-200 rounded"
-                  >
-                    <Text className="text-xs text-gray-600">Debug URL</Text>
-                  </TouchableOpacity>
-                </View>
-              )}
             </View>
-          </FieldGroup>
 
-          <FieldGroup title="Product Details">
             <Input
-              label="Title *"
-              placeholder="Product title"
-              value={formData.title}
-              onChangeText={(value) => updateField('title', value)}
-              variant="outline"
-            />
-            <Input
-              label="Excerpt"
+              label=""
               placeholder="Short description"
               value={formData.excerpt}
               onChangeText={(value) => updateField('excerpt', value)}
@@ -215,8 +199,9 @@ export default function ProductFormScreen({ product, onClose, onSave }: ProductF
               multiline
               numberOfLines={2}
             />
+
             <Input
-              label="Notes"
+              label=""
               placeholder="Internal notes"
               value={formData.notes}
               onChangeText={(value) => updateField('notes', value)}
@@ -224,7 +209,7 @@ export default function ProductFormScreen({ product, onClose, onSave }: ProductF
               multiline
               numberOfLines={3}
             />
-          </FieldGroup>
+          </View>
 
           <FieldGroup title="Classification">
             <Input
@@ -444,23 +429,19 @@ export default function ProductFormScreen({ product, onClose, onSave }: ProductF
       <View className="bg-white border-b border-gray-200">
         <View className="px-4 py-4">
           <View className="flex-row items-center justify-between">
-            <TouchableOpacity onPress={onClose}>
-              <Text className="text-blue-600 text-base font-medium">Cancel</Text>
-            </TouchableOpacity>
+            <Text className="text-lg font-semibold text-gray-900 flex-1">
+              {isEditing ? formData.title || 'Edit Product' : 'New Product'}
+            </Text>
 
-            <View className="flex-row items-center">
-              <MaterialIcons name="inventory-2" size={20} color="#374151" />
-              <Text className="text-lg font-semibold text-gray-900 ml-2">
-                {isEditing ? formData.title || 'Edit Product' : 'New Product'}
-              </Text>
+            <View className="flex-row items-center space-x-3">
+              <TouchableOpacity onPress={onClose}>
+                <MaterialIcons name="close" size={24} color="#6B7280" />
+              </TouchableOpacity>
+
+              <TouchableOpacity onPress={handleSave} disabled={loading}>
+                <MaterialIcons name="check" size={24} color={loading ? "#9CA3AF" : "#10B981"} />
+              </TouchableOpacity>
             </View>
-
-            <Button
-              title="Save"
-              onPress={handleSave}
-              loading={loading}
-              size="small"
-            />
           </View>
         </View>
       </View>

@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { View, Text, TouchableOpacity, FlatList, Alert, Modal } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { View, Text, TouchableOpacity, FlatList, Alert, Modal, BackHandler } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Feather } from '@expo/vector-icons';
 import { useStore } from '../lib/store-context';
@@ -16,6 +16,30 @@ export default function StoreManagement({ onClose }: StoreManagementProps) {
   const [editingStore, setEditingStore] = useState<any>(null);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [storeToDelete, setStoreToDelete] = useState<any>(null);
+
+  // Handle Android back button
+  useEffect(() => {
+    const backAction = () => {
+      // If store form is open, close it
+      if (showForm) {
+        setShowForm(false);
+        setEditingStore(null);
+        return true;
+      }
+      // If delete modal is open, close it
+      if (showDeleteModal) {
+        setShowDeleteModal(false);
+        setStoreToDelete(null);
+        return true;
+      }
+      // Otherwise close store management
+      onClose();
+      return true;
+    };
+
+    const backHandler = BackHandler.addEventListener('hardwareBackPress', backAction);
+    return () => backHandler.remove();
+  }, [showForm, showDeleteModal, onClose]);
 
   const getStoreInitials = (name: string) => {
     return name

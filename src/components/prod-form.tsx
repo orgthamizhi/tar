@@ -1,5 +1,5 @@
-import React, { useState, useCallback } from 'react';
-import { View, Text, TouchableOpacity, Alert, TextInput, Switch } from 'react-native';
+import React, { useState, useCallback, useEffect } from 'react';
+import { View, Text, TouchableOpacity, Alert, TextInput, Switch, BackHandler, Modal } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { id } from '@instantdb/react-native';
 import { Feather, MaterialIcons, Ionicons } from '@expo/vector-icons';
@@ -12,6 +12,7 @@ import R2Image from './ui/r2-image';
 import { db, getCurrentTimestamp } from '../lib/instant';
 import { MediaManager, MediaItem } from './media';
 import { useStore } from '../lib/store-context';
+import TypeSelect from './type-select';
 
 interface ProductFormScreenProps {
   product?: any;
@@ -67,6 +68,29 @@ export default function ProductFormScreen({ product, onClose, onSave }: ProductF
   const [activeTab, setActiveTab] = useState('core');
   const [imageError, setImageError] = useState(false);
   const [hasChanges, setHasChanges] = useState(false);
+  const [showTypeSelect, setShowTypeSelect] = useState(false);
+
+  // Handle Android back button
+  useEffect(() => {
+    const backAction = () => {
+      if (hasChanges) {
+        Alert.alert(
+          'Unsaved Changes',
+          'You have unsaved changes. Are you sure you want to go back?',
+          [
+            { text: 'Cancel', style: 'cancel' },
+            { text: 'Discard', style: 'destructive', onPress: onClose }
+          ]
+        );
+        return true;
+      }
+      onClose();
+      return true;
+    };
+
+    const backHandler = BackHandler.addEventListener('hardwareBackPress', backAction);
+    return () => backHandler.remove();
+  }, [hasChanges, onClose]);
 
   const updateField = (field: string, value: any) => {
     if (field === 'image') {
@@ -450,10 +474,11 @@ export default function ProductFormScreen({ product, onClose, onSave }: ProductF
                   paddingHorizontal: 16,
                   borderTopWidth: 0,
                 }}
+                onPress={() => setShowTypeSelect(true)}
               >
                 <Text style={{ fontSize: 16, fontWeight: '500', color: '#111827' }}>Type</Text>
                 <Text style={{ fontSize: 14, color: '#6B7280', marginTop: 4 }}>
-                  {formData.type || 'Physical'}
+                  {formData.type || 'Select type'}
                 </Text>
               </TouchableOpacity>
 
@@ -682,6 +707,22 @@ export default function ProductFormScreen({ product, onClose, onSave }: ProductF
         onClose={onClose}
         loading={loading}
       />
+
+      {/* Type Selection Modal */}
+      <Modal
+        visible={showTypeSelect}
+        animationType="slide"
+        presentationStyle="pageSheet"
+      >
+        <TypeSelect
+          selectedType={formData.type}
+          onSelect={(type) => {
+            updateField('type', type);
+            setShowTypeSelect(false);
+          }}
+          onClose={() => setShowTypeSelect(false)}
+        />
+      </Modal>
     </View>
   );
 }

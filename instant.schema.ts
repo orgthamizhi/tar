@@ -18,7 +18,7 @@ const _schema = i.schema({
       name: i.string().unique().indexed(),
       storeId: i.string().indexed(),
     }),
-    categories: i.entity({
+    types: i.entity({
       name: i.string().unique().indexed(),
       parent: i.string().optional(),
       storeId: i.string().indexed(),

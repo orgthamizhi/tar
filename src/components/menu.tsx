@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { View, Text, TouchableOpacity, ScrollView } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { View, Text, TouchableOpacity, ScrollView, BackHandler } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import StoreSelector from './store-selector';
 import StoreForm from './store-form';
@@ -16,6 +16,27 @@ export default function FullScreenMenu({ onNavigate, onClose }: FullScreenMenuPr
   const insets = useSafeAreaInsets();
   const [showStoreForm, setShowStoreForm] = useState(false);
   const [showStoreManagement, setShowStoreManagement] = useState(false);
+
+  // Handle Android back button
+  useEffect(() => {
+    const backAction = () => {
+      // If in store form or management, go back to menu
+      if (showStoreForm) {
+        setShowStoreForm(false);
+        return true;
+      }
+      if (showStoreManagement) {
+        setShowStoreManagement(false);
+        return true;
+      }
+      // Otherwise close menu
+      onClose();
+      return true;
+    };
+
+    const backHandler = BackHandler.addEventListener('hardwareBackPress', backAction);
+    return () => backHandler.remove();
+  }, [showStoreForm, showStoreManagement, onClose]);
 
   const menuItems = [
     {

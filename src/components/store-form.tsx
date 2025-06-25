@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { View, Text, TouchableOpacity, Alert, ScrollView } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { View, Text, TouchableOpacity, Alert, ScrollView, BackHandler } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Feather } from '@expo/vector-icons';
 import Input from './ui/Input';
@@ -27,6 +27,17 @@ export default function StoreForm({ store, onClose, onSave }: StoreFormProps) {
   });
 
   const [loading, setLoading] = useState(false);
+
+  // Handle Android back button
+  useEffect(() => {
+    const backAction = () => {
+      onClose();
+      return true;
+    };
+
+    const backHandler = BackHandler.addEventListener('hardwareBackPress', backAction);
+    return () => backHandler.remove();
+  }, [onClose]);
 
   const handleSave = async () => {
     if (!formData.name.trim()) {

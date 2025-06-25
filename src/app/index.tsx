@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { Text, View, TouchableOpacity } from "react-native";
+import { Text, View, TouchableOpacity, BackHandler } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Feather } from '@expo/vector-icons';
 import ProductsScreen from "../components/products";
@@ -50,6 +50,50 @@ export default function Page() {
 
     runCompleteMigration();
   }, []);
+
+  // Handle Android back button
+  useEffect(() => {
+    const backAction = () => {
+      // If product form is open, let the product form handle the back button
+      if (isProductFormOpen) {
+        return false; // Let the product form's back handler take over
+      }
+
+      // If in management view, go back to list view
+      if (showManagement && (currentScreen === 'products' || currentScreen === 'collections')) {
+        setShowManagement(false);
+        return true;
+      }
+
+      // If bottom tabs are toggled (hidden), show them
+      if (!showBottomTabs && currentScreen !== 'menu') {
+        setShowBottomTabs(true);
+        return true;
+      }
+
+      // If in menu, go back to dashboard
+      if (currentScreen === 'menu') {
+        setCurrentScreen('dashboard');
+        return true;
+      }
+
+      // If not on dashboard, go to dashboard
+      if (currentScreen !== 'dashboard') {
+        setCurrentScreen('dashboard');
+        setShowBottomTabs(true);
+        setActiveBottomTab('workspace');
+        setShowManagement(false);
+        return true;
+      }
+
+      // If on dashboard, allow default back behavior (exit app)
+      return false;
+    };
+
+    const backHandler = BackHandler.addEventListener('hardwareBackPress', backAction);
+
+    return () => backHandler.remove();
+  }, [currentScreen, showManagement, showBottomTabs, isProductFormOpen]);
 
   const handleNavigate = (screen: Screen) => {
     setCurrentScreen(screen);

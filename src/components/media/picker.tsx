@@ -10,8 +10,6 @@ interface MediaPickerProps {
   allowMultiple?: boolean;
   mediaTypes?: 'Images' | 'Videos' | 'All';
   quality?: number;
-  maxWidth?: number;
-  maxHeight?: number;
   prefix?: string;
   disabled?: boolean;
 }
@@ -22,8 +20,6 @@ export default function MediaPicker({
   allowMultiple = false,
   mediaTypes = 'Images',
   quality = 0.8,
-  maxWidth = 1920,
-  maxHeight = 1920,
   prefix = 'products',
   disabled = false,
 }: MediaPickerProps) {
@@ -52,8 +48,6 @@ export default function MediaPicker({
         mediaTypes: mediaTypes as any, // Convert string to enum
         allowsMultipleSelection: allowMultiple,
         quality,
-        maxWidth,
-        maxHeight,
         exif: false,
       });
 
@@ -81,8 +75,6 @@ export default function MediaPicker({
       const result = await ImagePicker.launchCameraAsync({
         mediaTypes: mediaTypes as any, // Convert string to enum
         quality,
-        maxWidth,
-        maxHeight,
         exif: false,
       });
 

@@ -62,10 +62,7 @@ export const migrateProductsToNewSchema = async () => {
         needsUpdate = true;
       }
 
-      if (product.publish === undefined) {
-        updates.publish = false;
-        needsUpdate = true;
-      }
+
 
       if (product.featured === undefined) {
         updates.featured = false;
@@ -183,10 +180,7 @@ export const forceCompleteMigration = async () => {
         needsUpdate = true;
       }
 
-      if (product.publish === undefined) {
-        updates.publish = false;
-        needsUpdate = true;
-      }
+
 
       if (product.featured === undefined) {
         updates.featured = false;

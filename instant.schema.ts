@@ -18,7 +18,7 @@ const _schema = i.schema({
       name: i.string().unique().indexed(),
       storeId: i.string().indexed(),
     }),
-    types: i.entity({
+    categories: i.entity({
       name: i.string().unique().indexed(),
       parent: i.string().optional(),
       storeId: i.string().indexed(),
@@ -80,11 +80,10 @@ const _schema = i.schema({
       value: i.number().optional(),
     }),
     options: i.entity({
-      group: i.string().optional(),
       identifier: i.string().optional(),
-      parentid: i.string().indexed(),
+      order: i.number().optional(),
+      set: i.string().optional(),
       storeId: i.string().indexed(),
-      title: i.string().optional(),
       value: i.string().optional(),
     }),
     orderitems: i.entity({
@@ -131,11 +130,9 @@ const _schema = i.schema({
       category: i.string().optional(),
       cost: i.number().optional(),
       createdAt: i.date(),
-      description: i.string().optional(),
       excerpt: i.string().optional(),
       featured: i.boolean().optional(),
       image: i.string().optional(),
-      isActive: i.boolean().optional(),
       medias: i.json().optional(),
       metafields: i.any().optional(),
       modifiers: i.any().optional(),
@@ -145,7 +142,7 @@ const _schema = i.schema({
       pos: i.boolean().optional(),
       price: i.number().optional(),
       promoinfo: i.any().optional(),
-      publish: i.boolean().optional(),
+      status: i.boolean().optional(),
       publishAt: i.date().optional(),
       qrcode: i.string().optional(),
       relproducts: i.any().optional(),
@@ -188,6 +185,11 @@ const _schema = i.schema({
     }),
     tags: i.entity({
       name: i.string().unique().indexed(),
+      storeId: i.string().indexed(),
+    }),
+    types: i.entity({
+      name: i.string().unique().indexed(),
+      parent: i.string().optional(),
       storeId: i.string().indexed(),
     }),
     vendors: i.entity({

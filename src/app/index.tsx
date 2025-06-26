@@ -10,13 +10,14 @@ import DashboardScreen from "../components/dashboard";
 import SalesScreen from "../components/sales";
 import ReportsScreen from "../components/reports";
 import FullScreenMenu from "../components/menu";
+import Options from "../components/options";
 import BottomNavigation, { BottomTab, MainScreen } from "../components/nav";
 import BottomTabContent from "../components/tabs";
 import { runMigrationIfNeeded } from "../lib/migrate-products";
 import { completeMigrationProcess } from "../lib/cleanup-legacy";
 import { StoreProvider } from "../lib/store-context";
 
-type Screen = 'dashboard' | 'sales' | 'reports' | 'products' | 'collections' | 'menu';
+type Screen = 'dashboard' | 'sales' | 'reports' | 'products' | 'collections' | 'options' | 'menu';
 
 export default function Page() {
   const [currentScreen, setCurrentScreen] = useState<Screen>('dashboard');
@@ -157,6 +158,8 @@ export default function Page() {
         />;
       case 'collections':
         return <CollectionsScreen isGridView={isGridView} />;
+      case 'options':
+        return <Options onClose={() => handleNavigate('dashboard')} />;
       case 'menu':
         return <FullScreenMenu
           onNavigate={handleNavigate}

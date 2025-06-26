@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { View, Text, TouchableOpacity, Alert, ScrollView, Modal } from 'react-native';
+import React, { useState, useEffect, useRef } from 'react';
+import { View, Text, TouchableOpacity, Alert, ScrollView, Modal, Animated } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
 import { r2Service } from '../../lib/r2-service';
 import R2Image from '../ui/r2-image';
@@ -36,6 +36,24 @@ export default function MediaGallery({
 }: MediaGalleryProps) {
   const [selectedItem, setSelectedItem] = useState<{ item: MediaItem; index: number } | null>(null);
   const [showDrawer, setShowDrawer] = useState(false);
+  const rotateAnim = useRef(new Animated.Value(0)).current;
+
+  // Rotate animation for loading
+  useEffect(() => {
+    if (uploading) {
+      const rotate = Animated.loop(
+        Animated.timing(rotateAnim, {
+          toValue: 1,
+          duration: 1000,
+          useNativeDriver: true,
+        })
+      );
+      rotate.start();
+      return () => rotate.stop();
+    } else {
+      rotateAnim.setValue(0);
+    }
+  }, [uploading, rotateAnim]);
 
   const handleItemPress = (item: MediaItem, index: number) => {
     if (!editable) return;
@@ -97,19 +115,28 @@ export default function MediaGallery({
     );
   };
 
-  const renderUploadTile = () => (
-    <TouchableOpacity
-      onPress={onUploadPress}
-      className="aspect-square bg-gray-100 items-center justify-center"
-      disabled={uploading}
-    >
-      {uploading ? (
-        <MaterialIcons name="hourglass-empty" size={32} color="#9CA3AF" />
-      ) : (
-        <MaterialIcons name="add" size={32} color="#9CA3AF" />
-      )}
-    </TouchableOpacity>
-  );
+  const renderUploadTile = () => {
+    const spin = rotateAnim.interpolate({
+      inputRange: [0, 1],
+      outputRange: ['0deg', '360deg'],
+    });
+
+    return (
+      <TouchableOpacity
+        onPress={onUploadPress}
+        className="aspect-square bg-gray-100 items-center justify-center"
+        disabled={uploading}
+      >
+        {uploading ? (
+          <Animated.View style={{ transform: [{ rotate: spin }] }}>
+            <MaterialIcons name="refresh" size={32} color="#3B82F6" />
+          </Animated.View>
+        ) : (
+          <MaterialIcons name="add" size={32} color="#9CA3AF" />
+        )}
+      </TouchableOpacity>
+    );
+  };
 
   const allItems = [...media];
   if (showUpload) {

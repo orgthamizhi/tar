@@ -60,35 +60,20 @@ export default function VerticalTabs({
         </View>
 
         {/* Bottom action buttons */}
-        {(onSave || onClose) && (
+        {hasChanges && onSave && (
           <View className="border-t border-gray-200 bg-white">
-            {hasChanges && onSave && (
-              <TouchableOpacity
-                onPress={onSave}
-                disabled={loading}
-                className="h-16 items-center justify-center border-b border-gray-200"
-                activeOpacity={0.7}
-              >
-                <MaterialIcons
-                  name="check"
-                  size={24}
-                  color={loading ? "#9CA3AF" : "#10B981"}
-                />
-              </TouchableOpacity>
-            )}
-            {onClose && (
-              <TouchableOpacity
-                onPress={onClose}
-                className="h-16 items-center justify-center"
-                activeOpacity={0.7}
-              >
-                <MaterialIcons
-                  name={hasChanges ? "keyboard-arrow-down" : "keyboard-arrow-down"}
-                  size={24}
-                  color="#6B7280"
-                />
-              </TouchableOpacity>
-            )}
+            <TouchableOpacity
+              onPress={onSave}
+              disabled={loading}
+              className="h-16 items-center justify-center"
+              activeOpacity={0.7}
+            >
+              <MaterialIcons
+                name="check"
+                size={24}
+                color={loading ? "#9CA3AF" : "#10B981"}
+              />
+            </TouchableOpacity>
           </View>
         )}
       </View>

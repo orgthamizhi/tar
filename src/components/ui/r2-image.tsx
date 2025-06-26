@@ -49,7 +49,6 @@ export default function R2Image({
           }
         }
       } catch (err) {
-        console.error('Failed to load signed URL:', err);
         setError(true);
         onError?.(err);
       } finally {
@@ -84,12 +83,10 @@ export default function R2Image({
       source={{ uri: signedUrl }}
       style={style}
       onError={(e) => {
-        console.error('Image load error:', e.nativeEvent);
         setError(true);
         onError?.(e);
       }}
       onLoad={() => {
-        console.log('Image loaded successfully:', signedUrl);
         onLoad?.();
       }}
     />

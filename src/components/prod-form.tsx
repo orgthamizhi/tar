@@ -1,11 +1,10 @@
-import React, { useState, useCallback, useEffect } from 'react';
-import { View, Text, TouchableOpacity, Alert, TextInput, Switch, BackHandler, Modal } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import React, { useState, useCallback, useEffect, useRef } from 'react';
+import { View, Text, TouchableOpacity, Alert, TextInput, BackHandler, Modal, Animated } from 'react-native';
 import { id } from '@instantdb/react-native';
-import { Feather, MaterialIcons, Ionicons } from '@expo/vector-icons';
+import { MaterialIcons, Ionicons } from '@expo/vector-icons';
+import * as ImagePicker from 'expo-image-picker';
+import { RichText, Toolbar, useEditorBridge } from '@10play/tentap-editor';
 import Input from './ui/Input';
-import Button from './ui/Button';
-import Card from './ui/Card';
 import QuantitySelector from './ui/qty';
 import VerticalTabs, { TabContent, FieldGroup, VerticalTab } from './ui/vtabs';
 import R2Image from './ui/r2-image';
@@ -13,6 +12,12 @@ import { db, getCurrentTimestamp } from '../lib/instant';
 import { MediaManager, MediaItem } from './media';
 import { useStore } from '../lib/store-context';
 import TypeSelect from './type-select';
+import CategorySelect from './category-select';
+import Options from './options';
+import { r2Service } from '../lib/r2-service';
+import VendorSelect from './vendor-select';
+import BrandSelect from './brand-select';
+import CollectionSelect from './collection-select';
 
 interface ProductFormScreenProps {
   product?: any;
@@ -21,9 +26,24 @@ interface ProductFormScreenProps {
 }
 
 export default function ProductFormScreen({ product, onClose, onSave }: ProductFormScreenProps) {
-  const insets = useSafeAreaInsets();
   const { currentStore } = useStore();
   const isEditing = !!product;
+
+  // Query product with collection relationship using useQuery
+  const { data: productWithCollection } = db.useQuery(
+    product?.id ? {
+      products: {
+        $: {
+          where: {
+            id: product.id
+          }
+        },
+        collection: {}
+      }
+    } : null
+  );
+
+  const productCollection = productWithCollection?.products?.[0]?.collection;
 
   const [formData, setFormData] = useState({
     // Updated to match current schema fields
@@ -31,7 +51,6 @@ export default function ProductFormScreen({ product, onClose, onSave }: ProductF
     name: product?.name || product?.title || '',
     image: product?.image || '',
     medias: product?.medias || [],
-    description: product?.description || '',
     excerpt: product?.excerpt || '',
     notes: product?.notes || '',
     type: product?.type || '',
@@ -42,6 +61,7 @@ export default function ProductFormScreen({ product, onClose, onSave }: ProductF
     saleprice: product?.saleprice?.toString() || '',
     vendor: product?.vendor || '',
     brand: product?.brand || '',
+
     options: product?.options || null,
     modifiers: product?.modifiers || null,
     metafields: product?.metafields || null,
@@ -49,19 +69,18 @@ export default function ProductFormScreen({ product, onClose, onSave }: ProductF
     stores: product?.stores || null,
     pos: product?.pos ?? false,
     website: product?.website ?? false,
-    isActive: product?.isActive ?? true,
     seo: product?.seo || null,
     tags: product?.tags || '',
     cost: product?.cost?.toString() || '',
     qrcode: product?.qrcode || '',
     stock: product?.stock || 0,
     publishAt: product?.publishAt || null,
-    publish: product?.publish ?? false,
     promoinfo: product?.promoinfo || null,
     featured: product?.featured ?? false,
     relproducts: product?.relproducts || null,
     sellproducts: product?.sellproducts || null,
     storeId: product?.storeId || currentStore?.id || '', // Use current store ID
+    status: product?.status ?? true, // true = Active, false = Draft
   });
 
   const [loading, setLoading] = useState(false);
@@ -69,6 +88,75 @@ export default function ProductFormScreen({ product, onClose, onSave }: ProductF
   const [imageError, setImageError] = useState(false);
   const [hasChanges, setHasChanges] = useState(false);
   const [showTypeSelect, setShowTypeSelect] = useState(false);
+  const [showCategorySelect, setShowCategorySelect] = useState(false);
+  const [showVendorSelect, setShowVendorSelect] = useState(false);
+  const [showBrandSelect, setShowBrandSelect] = useState(false);
+  const [showCollectionSelect, setShowCollectionSelect] = useState(false);
+  const [showOptionsSelect, setShowOptionsSelect] = useState(false);
+  const [selectedCollectionId, setSelectedCollectionId] = useState<string | null>(productCollection?.id || null);
+  const [selectedCollectionName, setSelectedCollectionName] = useState<string | null>(productCollection?.name || null);
+  const [selectedOptionSets, setSelectedOptionSets] = useState<{[key: string]: string[]}>({});
+  const [showLabelSkuDrawer, setShowLabelSkuDrawer] = useState(false);
+  const [showStatusDrawer, setShowStatusDrawer] = useState(false);
+  const [showImageUpload, setShowImageUpload] = useState(false);
+  const [imageUploading, setImageUploading] = useState(false);
+  const rotateAnim = useRef(new Animated.Value(0)).current;
+
+  // Initialize 10tap editor
+  const editor = useEditorBridge({
+    autofocus: false,
+    avoidIosKeyboard: true,
+    initialContent: formData.notes || '',
+  });
+
+  // Handle editor content changes
+  useEffect(() => {
+    if (editor) {
+      const unsubscribe = editor._subscribeToEditorStateUpdate(() => {
+        const content = editor.getHTML();
+        updateField('notes', content);
+      });
+      return unsubscribe;
+    }
+  }, [editor]);
+
+  // Rotation animation for loading
+  useEffect(() => {
+    if (imageUploading) {
+      const rotate = Animated.loop(
+        Animated.timing(rotateAnim, {
+          toValue: 1,
+          duration: 1000,
+          useNativeDriver: true,
+        })
+      );
+      rotate.start();
+      return () => rotate.stop();
+    } else {
+      rotateAnim.setValue(0);
+    }
+  }, [imageUploading, rotateAnim]);
+
+  // Update selectedCollectionId when productCollection changes
+  useEffect(() => {
+    setSelectedCollectionId(productCollection?.id || null);
+    setSelectedCollectionName(productCollection?.name || null);
+  }, [productCollection?.id, productCollection?.name]);
+
+  // Track collection changes for hasChanges detection
+  useEffect(() => {
+    if (isEditing && productCollection) {
+      // If we're editing and the selected collection differs from the original
+      if (selectedCollectionId !== productCollection?.id) {
+        setHasChanges(true);
+      }
+    } else if (!isEditing && selectedCollectionId) {
+      // If we're creating new product and collection is selected
+      setHasChanges(true);
+    }
+  }, [selectedCollectionId, productCollection?.id, isEditing]);
+
+
 
   // Handle Android back button
   useEffect(() => {
@@ -140,7 +228,6 @@ export default function ProductFormScreen({ product, onClose, onSave }: ProductF
       // Add optional fields if they have values
       if (formData.image) productData.image = formData.image;
       if (formData.medias && formData.medias.length > 0) productData.medias = formData.medias;
-      if (formData.description) productData.description = formData.description.trim();
       if (formData.excerpt) productData.excerpt = formData.excerpt.trim();
       if (formData.notes) productData.notes = formData.notes.trim();
       if (formData.type) productData.type = formData.type.trim();
@@ -160,9 +247,8 @@ export default function ProductFormScreen({ product, onClose, onSave }: ProductF
       // Boolean fields
       productData.pos = formData.pos;
       productData.website = formData.website;
-      productData.isActive = formData.isActive;
-      productData.publish = formData.publish;
       productData.featured = formData.featured;
+      productData.status = formData.status;
 
       if (formData.seo) productData.seo = formData.seo;
       if (formData.tags) productData.tags = formData.tags.trim();
@@ -174,10 +260,22 @@ export default function ProductFormScreen({ product, onClose, onSave }: ProductF
       if (formData.relproducts) productData.relproducts = formData.relproducts;
       if (formData.sellproducts) productData.sellproducts = formData.sellproducts;
 
+      let productId: string;
+
       if (isEditing) {
+        productId = product.id;
         await db.transact(db.tx.products[product.id].update(productData));
       } else {
-        await db.transact(db.tx.products[id()].update(productData));
+        productId = id();
+        await db.transact(db.tx.products[productId].update(productData));
+      }
+
+      // Handle collection relationship
+      if (selectedCollectionId) {
+        await db.transact(db.tx.products[productId].link({ collection: selectedCollectionId }));
+      } else if (isEditing && productCollection?.id) {
+        // If editing and collection was removed, unlink it
+        await db.transact(db.tx.products[productId].unlink({ collection: productCollection.id }));
       }
 
       onSave?.();
@@ -198,218 +296,207 @@ export default function ProductFormScreen({ product, onClose, onSave }: ProductF
       icon: <Ionicons name="cube-outline" size={20} color="#6B7280" />,
       content: (
         <TabContent title="">
-          {/* Notion-style title input */}
-          <View style={{ marginTop: 0 }}>
-            <TextInput
-              style={{
-                fontSize: 24,
-                fontWeight: '600',
-                color: '#000',
-                paddingVertical: 12,
-                paddingHorizontal: 0,
-                borderWidth: 0,
-                backgroundColor: 'transparent',
-              }}
-              value={formData.title}
-              onChangeText={(value) => {
-                updateField('title', value);
-                updateField('name', value); // Keep both in sync
-              }}
-              placeholder="Product title"
-              placeholderTextColor="#999"
-            />
-
-            {/* Description field */}
-            <TextInput
-              style={{
-                fontSize: 16,
-                color: '#6B7280',
-                paddingVertical: 8,
-                paddingHorizontal: 0,
-                borderWidth: 0,
-                backgroundColor: 'transparent',
-                marginTop: 4,
-              }}
-              value={formData.description}
-              onChangeText={(value) => updateField('description', value)}
-              placeholder="Add a description..."
-              placeholderTextColor="#9CA3AF"
-              multiline
-            />
-          </View>
-
-          {/* Tiles Container */}
-          <View style={{ marginTop: 16 }}>
-            {/* First Row: Price, Sale Price, Cost */}
-            <View style={{ flexDirection: 'row', marginBottom: 1 }}>
-              <View style={{
-                flex: 1,
-                backgroundColor: '#fff',
-                borderWidth: 1,
-                borderColor: '#E5E7EB',
-                borderRightWidth: 0,
-                paddingVertical: 16,
-                paddingHorizontal: 12,
-                alignItems: 'center',
-              }}>
-                <Text style={{ fontSize: 18, fontWeight: '600', color: '#111827' }}>
-                  ${parseFloat(formData.price || '0').toFixed(2)}
-                </Text>
-                <Text style={{ fontSize: 12, color: '#6B7280', marginTop: 4 }}>Price</Text>
-              </View>
-
-              <View style={{
-                flex: 1,
-                backgroundColor: '#fff',
-                borderWidth: 1,
-                borderColor: '#E5E7EB',
-                borderRightWidth: 0,
-                paddingVertical: 16,
-                paddingHorizontal: 12,
-                alignItems: 'center',
-              }}>
-                <Text style={{ fontSize: 18, fontWeight: '600', color: '#111827' }}>
-                  ${parseFloat(formData.saleprice || '0').toFixed(2)}
-                </Text>
-                <Text style={{ fontSize: 12, color: '#6B7280', marginTop: 4 }}>Sale Price</Text>
-              </View>
-
-              <View style={{
-                flex: 1,
-                backgroundColor: '#fff',
-                borderWidth: 1,
-                borderColor: '#E5E7EB',
-                paddingVertical: 16,
-                paddingHorizontal: 12,
-                alignItems: 'center',
-              }}>
-                <Text style={{ fontSize: 18, fontWeight: '600', color: '#111827' }}>
-                  ${parseFloat(formData.cost || '0').toFixed(2)}
-                </Text>
-                <Text style={{ fontSize: 12, color: '#6B7280', marginTop: 4 }}>Cost</Text>
-              </View>
-            </View>
-
-            {/* Divider */}
-            <View style={{ height: 8 }} />
-
-            {/* Second Row: Image, QR Code, Stock */}
-            <View style={{ flexDirection: 'row', marginBottom: 1 }}>
-              {/* Image Tile */}
-              <View style={{
-                flex: 1,
-                backgroundColor: '#fff',
-                borderWidth: 1,
-                borderColor: '#E5E7EB',
-                borderRightWidth: 0,
-                height: 120,
-                alignItems: 'center',
-                justifyContent: 'center',
-              }}>
-                {formData.image && !imageError ? (
+          {/* Main Container with Border around entire structure */}
+          <View style={{
+            borderWidth: 1,
+            borderColor: '#E5E7EB',
+            backgroundColor: '#fff',
+            borderRadius: 8,
+            marginHorizontal: 0,
+            marginVertical: 0,
+            overflow: 'hidden',
+          }}>
+            {/* First Row: Image Upload and Label/SKU */}
+            <View style={{ flexDirection: 'row', borderBottomWidth: 1, borderColor: '#E5E7EB' }}>
+              {/* Image Upload Tile - Square */}
+              <TouchableOpacity
+                style={{
+                  width: 120,
+                  height: 120,
+                  backgroundColor: '#F9FAFB',
+                  borderRightWidth: 1,
+                  borderColor: '#E5E7EB',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}
+                onPress={() => setShowImageUpload(true)}
+              >
+                {imageUploading ? (
+                  <View style={{ alignItems: 'center', justifyContent: 'center' }}>
+                    <Animated.View
+                      style={{
+                        transform: [{
+                          rotate: rotateAnim.interpolate({
+                            inputRange: [0, 1],
+                            outputRange: ['0deg', '360deg'],
+                          }),
+                        }],
+                      }}
+                    >
+                      <MaterialIcons name="refresh" size={24} color="#3B82F6" />
+                    </Animated.View>
+                    <Text style={{ color: '#6B7280', fontSize: 10, marginTop: 4, textAlign: 'center' }}>
+                      Uploading...
+                    </Text>
+                  </View>
+                ) : formData.image && !imageError ? (
                   <R2Image
                     url={formData.image}
                     style={{ width: '100%', height: '100%' }}
                     resizeMode="cover"
                     onError={(error) => {
-                      console.log('R2Image load error:', error);
                       setImageError(true);
                     }}
                     onLoad={() => {
-                      console.log('R2Image loaded successfully:', formData.image);
+                      // Image loaded successfully
                     }}
                   />
                 ) : (
                   <View style={{ alignItems: 'center' }}>
-                    <MaterialIcons name="image" size={32} color="#9CA3AF" />
+                    <MaterialIcons name="camera-alt" size={24} color="#9CA3AF" />
                     <Text style={{ color: '#9CA3AF', fontSize: 10, marginTop: 4, textAlign: 'center' }}>
-                      Image
+                      Upload
                     </Text>
                   </View>
                 )}
-              </View>
-
-              {/* SKU Tile */}
-              <View style={{
-                flex: 1,
-                backgroundColor: '#fff',
-                borderWidth: 1,
-                borderColor: '#E5E7EB',
-                borderRightWidth: 0,
-                height: 120,
-                alignItems: 'center',
-                justifyContent: 'center',
-                paddingVertical: 12,
-                paddingHorizontal: 8,
-              }}>
-                <MaterialIcons name="qr-code" size={32} color="#9CA3AF" />
-                <Text style={{ fontSize: 10, color: '#6B7280', textAlign: 'center', marginTop: 4 }}>
-                  SKU
-                </Text>
-                <Text style={{ fontSize: 12, color: '#111827', textAlign: 'center', marginTop: 2, fontWeight: '500' }}>
-                  {formData.sku || 'Auto-generated'}
-                </Text>
-              </View>
-
-              {/* Stock Tile */}
-              <TouchableOpacity style={{
-                flex: 1,
-                backgroundColor: '#fff',
-                borderWidth: 1,
-                borderColor: '#E5E7EB',
-                height: 120,
-                alignItems: 'center',
-                justifyContent: 'center',
-                paddingVertical: 12,
-              }}>
-                <View style={{ flexDirection: 'row', alignItems: 'baseline' }}>
-                  <Text style={{ fontSize: 18, fontWeight: '600', color: '#111827' }}>
-                    {formData.stock || 0}
-                  </Text>
-                  <Text style={{ fontSize: 12, color: '#6B7280', marginLeft: 2 }}>
-                    {formData.unit || 'units'}
-                  </Text>
-                </View>
-                <Text style={{ fontSize: 12, color: '#6B7280', marginTop: 4 }}>Stock</Text>
               </TouchableOpacity>
+
+              {/* Label/SKU Tile - Takes remaining space vertically */}
+              <View style={{ flex: 1, height: 120 }}>
+                <TouchableOpacity
+                  style={{
+                    flex: 1,
+                    backgroundColor: '#fff',
+                    paddingHorizontal: 16,
+                    paddingVertical: 16,
+                    position: 'relative',
+                  }}
+                  onPress={() => setShowLabelSkuDrawer(true)}
+                >
+                  <Text style={{ fontSize: 48, fontWeight: '700', color: '#111827', position: 'absolute', top: 16, left: 16 }}>
+                    P
+                  </Text>
+                  <Text style={{ fontSize: 14, color: '#6B7280', position: 'absolute', bottom: 16, right: 16 }}>
+                    SKU
+                  </Text>
+                </TouchableOpacity>
+              </View>
             </View>
 
-            {/* Third Row: POS and Website Status */}
-            <View style={{ flexDirection: 'row' }}>
+            {/* Product Title */}
+            <View style={{ paddingHorizontal: 16, paddingTop: 16, borderBottomWidth: 1, borderColor: '#E5E7EB' }}>
+              <TextInput
+                style={{
+                  fontSize: 24,
+                  fontWeight: '600',
+                  color: '#000',
+                  paddingVertical: 12,
+                  paddingHorizontal: 0,
+                  borderWidth: 0,
+                  backgroundColor: 'transparent',
+                }}
+                value={formData.title}
+                onChangeText={(value) => {
+                  updateField('title', value);
+                  updateField('name', value); // Keep both in sync
+                }}
+                placeholder="PRODUCT TITLE"
+                placeholderTextColor="#999"
+              />
+
+              {/* Excerpt field */}
+              <TextInput
+                style={{
+                  fontSize: 16,
+                  color: '#6B7280',
+                  paddingVertical: 8,
+                  paddingHorizontal: 0,
+                  borderWidth: 0,
+                  backgroundColor: 'transparent',
+                  marginTop: 4,
+                  marginBottom: 16,
+                }}
+                value={formData.excerpt}
+                onChangeText={(value) => updateField('excerpt', value)}
+                placeholder="expert"
+                placeholderTextColor="#9CA3AF"
+                multiline
+              />
+            </View>
+
+            {/* Units and Price Display */}
+            <View style={{
+              flexDirection: 'row',
+              alignItems: 'baseline',
+              paddingVertical: 24,
+              paddingHorizontal: 16,
+              borderBottomWidth: 1,
+              borderColor: '#E5E7EB',
+              backgroundColor: '#fff'
+            }}>
+              <Text style={{ fontSize: 48, fontWeight: '700', color: '#111827' }}>
+                {formData.stock || 0}
+              </Text>
+              <Text style={{ fontSize: 16, color: '#6B7280', marginLeft: 8 }}>
+                {formData.unit || 'units'}
+              </Text>
+              <View style={{ flex: 1 }} />
+              <Text style={{ fontSize: 24, fontWeight: '600', color: '#111827' }}>
+                {parseFloat(formData.saleprice || '0').toFixed(2)} $
+              </Text>
+            </View>
+
+            {/* Bottom Row: POS, Website, Status */}
+            <View style={{
+              flexDirection: 'row',
+              backgroundColor: '#fff',
+            }}>
+              {/* POS Tile - Square */}
               <TouchableOpacity
                 style={{
-                  flex: 1,
-                  backgroundColor: '#fff',
-                  borderWidth: 1,
+                  width: 60,
+                  height: 60,
+                  backgroundColor: formData.pos ? '#F3F4F6' : '#fff',
+                  borderRightWidth: 1,
                   borderColor: '#E5E7EB',
-                  borderRightWidth: 0,
-                  paddingVertical: 16,
-                  paddingHorizontal: 12,
                   alignItems: 'center',
+                  justifyContent: 'center',
                 }}
                 onPress={() => updateField('pos', !formData.pos)}
               >
-                <Text style={{ fontSize: 12, color: '#6B7280', marginBottom: 4 }}>POS</Text>
-                <Text style={{ fontSize: 14, fontWeight: '500', color: '#111827' }}>
-                  {formData.pos ? 'Active' : 'Inactive'}
-                </Text>
+                <MaterialIcons name="point-of-sale" size={24} color={formData.pos ? '#111827' : '#9CA3AF'} />
               </TouchableOpacity>
 
+              {/* Website Tile - Square */}
               <TouchableOpacity
                 style={{
-                  flex: 1,
-                  backgroundColor: '#fff',
-                  borderWidth: 1,
+                  width: 60,
+                  height: 60,
+                  backgroundColor: formData.website ? '#F3F4F6' : '#fff',
+                  borderRightWidth: 1,
                   borderColor: '#E5E7EB',
-                  paddingVertical: 16,
-                  paddingHorizontal: 12,
                   alignItems: 'center',
+                  justifyContent: 'center',
                 }}
                 onPress={() => updateField('website', !formData.website)}
               >
-                <Text style={{ fontSize: 12, color: '#6B7280', marginBottom: 4 }}>Website</Text>
-                <Text style={{ fontSize: 14, fontWeight: '500', color: '#111827' }}>
-                  {formData.website ? 'Active' : 'Inactive'}
+                <MaterialIcons name="language" size={24} color={formData.website ? '#111827' : '#9CA3AF'} />
+              </TouchableOpacity>
+
+              {/* Status Tile - Rectangle taking remaining space */}
+              <TouchableOpacity
+                style={{
+                  flex: 1,
+                  height: 60,
+                  backgroundColor: '#fff',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  paddingHorizontal: 12,
+                }}
+                onPress={() => setShowStatusDrawer(true)}
+              >
+                <Text style={{ fontSize: 14, color: '#111827', fontWeight: '500' }}>
+                  {formData.status ? 'Active' : 'Draft'}
                 </Text>
               </TouchableOpacity>
             </View>
@@ -490,6 +577,7 @@ export default function ProductFormScreen({ product, onClose, onSave }: ProductF
                   paddingVertical: 16,
                   paddingHorizontal: 16,
                 }}
+                onPress={() => setShowCategorySelect(true)}
               >
                 <Text style={{ fontSize: 16, fontWeight: '500', color: '#111827' }}>Category</Text>
                 <Text style={{ fontSize: 14, color: '#6B7280', marginTop: 4 }}>
@@ -505,6 +593,7 @@ export default function ProductFormScreen({ product, onClose, onSave }: ProductF
                   paddingVertical: 16,
                   paddingHorizontal: 16,
                 }}
+                onPress={() => setShowVendorSelect(true)}
               >
                 <Text style={{ fontSize: 16, fontWeight: '500', color: '#111827' }}>Vendor</Text>
                 <Text style={{ fontSize: 14, color: '#6B7280', marginTop: 4 }}>
@@ -520,10 +609,27 @@ export default function ProductFormScreen({ product, onClose, onSave }: ProductF
                   paddingVertical: 16,
                   paddingHorizontal: 16,
                 }}
+                onPress={() => setShowBrandSelect(true)}
               >
                 <Text style={{ fontSize: 16, fontWeight: '500', color: '#111827' }}>Brand</Text>
                 <Text style={{ fontSize: 14, color: '#6B7280', marginTop: 4 }}>
                   {formData.brand || 'Select brand'}
+                </Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={{
+                  backgroundColor: '#fff',
+                  borderBottomWidth: 1,
+                  borderBottomColor: '#E5E7EB',
+                  paddingVertical: 16,
+                  paddingHorizontal: 16,
+                }}
+                onPress={() => setShowCollectionSelect(true)}
+              >
+                <Text style={{ fontSize: 16, fontWeight: '500', color: '#111827' }}>Collection</Text>
+                <Text style={{ fontSize: 14, color: '#6B7280', marginTop: 4 }}>
+                  {selectedCollectionName || 'Select collection'}
                 </Text>
               </TouchableOpacity>
             </View>
@@ -545,14 +651,81 @@ export default function ProductFormScreen({ product, onClose, onSave }: ProductF
             prefix="products"
             title=""
             description=""
+            useCustomUpload={true}
+            onCustomUpload={() => setShowImageUpload(true)}
+            customUploading={imageUploading}
           />
         </TabContent>
       ),
     },
     {
-      id: 'pricing',
-      label: 'Pricing',
-      icon: <MaterialIcons name="attach-money" size={20} color="#6B7280" />,
+      id: 'notes',
+      label: 'Notes',
+      icon: <Text style={{ fontSize: 14, fontWeight: '600', color: '#6B7280' }}>n</Text>,
+      content: (
+        <TabContent title="">
+          <View style={{ flex: 1, height: 400 }}>
+            {/* 10tap Rich Text Editor */}
+            <RichText
+              editor={editor}
+              style={{
+                flex: 1,
+                borderWidth: 1,
+                borderColor: '#E5E7EB',
+                borderRadius: 8,
+                backgroundColor: '#fff',
+                marginBottom: 16,
+              }}
+            />
+
+            {/* 10tap Toolbar */}
+            <View style={{
+              backgroundColor: '#F9FAFB',
+              borderWidth: 1,
+              borderColor: '#E5E7EB',
+              borderRadius: 8,
+              minHeight: 50,
+            }}>
+              <Toolbar editor={editor} />
+            </View>
+          </View>
+        </TabContent>
+      ),
+    },
+    {
+      id: 'options',
+      label: 'Options',
+      icon: <Text style={{ fontSize: 16, fontWeight: '600', color: '#6B7280' }}>O</Text>,
+      content: (
+        <TabContent title="">
+          <FieldGroup title="Product Options">
+            <TouchableOpacity
+              style={{
+                backgroundColor: 'white',
+                borderWidth: 1,
+                borderColor: '#E5E7EB',
+                borderRadius: 8,
+                paddingVertical: 16,
+                paddingHorizontal: 16,
+              }}
+              onPress={() => setShowOptionsSelect(true)}
+            >
+              <Text style={{ fontSize: 16, fontWeight: '500', color: '#111827' }}>Options</Text>
+              <Text style={{ fontSize: 14, color: '#6B7280', marginTop: 4 }}>
+                {Object.keys(selectedOptionSets).length > 0
+                  ? `${Object.keys(selectedOptionSets).length} option set(s) selected`
+                  : 'Select option sets'
+                }
+              </Text>
+            </TouchableOpacity>
+          </FieldGroup>
+        </TabContent>
+      ),
+    },
+    {
+      id: 'items',
+      label: 'Items',
+      icon: <Text style={{ fontSize: 16, fontWeight: '600', color: '#6B7280' }}>I</Text>,
       content: (
         <TabContent title="">
           <FieldGroup title="Product Details">
@@ -604,15 +777,7 @@ export default function ProductFormScreen({ product, onClose, onSave }: ProductF
               variant="outline"
             />
           </FieldGroup>
-        </TabContent>
-      ),
-    },
-    {
-      id: 'inventory',
-      label: 'Inventory',
-      icon: <Ionicons name="layers-outline" size={20} color="#6B7280" />,
-      content: (
-        <TabContent title="">
+
           <FieldGroup title="Stock">
             <View style={{
               flexDirection: 'row',
@@ -634,59 +799,6 @@ export default function ProductFormScreen({ product, onClose, onSave }: ProductF
               <Text style={{ color: '#2563EB', marginTop: 4 }}>
                 {formData.stock > 10 ? 'In Stock' : formData.stock > 0 ? 'Low Stock' : 'Out of Stock'}
               </Text>
-            </View>
-          </FieldGroup>
-        </TabContent>
-      ),
-    },
-    {
-      id: 'settings',
-      label: 'Settings',
-      icon: <Ionicons name="settings-outline" size={20} color="#6B7280" />,
-      content: (
-        <TabContent title="">
-          <FieldGroup title="Availability">
-            <View style={{ gap: 16 }}>
-              <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-                <Text style={{ fontSize: 16, color: '#111827' }}>Active</Text>
-                <Switch
-                  value={formData.isActive}
-                  onValueChange={(value) => updateField('isActive', value)}
-                />
-              </View>
-              <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-                <Text style={{ fontSize: 16, color: '#111827' }}>POS</Text>
-                <Switch
-                  value={formData.pos}
-                  onValueChange={(value) => updateField('pos', value)}
-                />
-              </View>
-              <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-                <Text style={{ fontSize: 16, color: '#111827' }}>Website</Text>
-                <Switch
-                  value={formData.website}
-                  onValueChange={(value) => updateField('website', value)}
-                />
-              </View>
-            </View>
-          </FieldGroup>
-
-          <FieldGroup title="Publishing">
-            <View style={{ gap: 16 }}>
-              <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-                <Text style={{ fontSize: 16, color: '#111827' }}>Published</Text>
-                <Switch
-                  value={formData.publish}
-                  onValueChange={(value) => updateField('publish', value)}
-                />
-              </View>
-              <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-                <Text style={{ fontSize: 16, color: '#111827' }}>Featured</Text>
-                <Switch
-                  value={formData.featured}
-                  onValueChange={(value) => updateField('featured', value)}
-                />
-              </View>
             </View>
           </FieldGroup>
         </TabContent>
@@ -722,6 +834,456 @@ export default function ProductFormScreen({ product, onClose, onSave }: ProductF
           }}
           onClose={() => setShowTypeSelect(false)}
         />
+      </Modal>
+
+      {/* Category Selection Modal */}
+      <Modal
+        visible={showCategorySelect}
+        animationType="slide"
+        presentationStyle="pageSheet"
+      >
+        <CategorySelect
+          selectedCategory={formData.category}
+          onSelect={(category) => {
+            updateField('category', category);
+            setShowCategorySelect(false);
+          }}
+          onClose={() => setShowCategorySelect(false)}
+        />
+      </Modal>
+
+      {/* Vendor Selection Modal */}
+      <Modal
+        visible={showVendorSelect}
+        animationType="slide"
+        presentationStyle="pageSheet"
+      >
+        <VendorSelect
+          selectedVendor={formData.vendor}
+          onSelect={(vendor) => {
+            updateField('vendor', vendor);
+            setShowVendorSelect(false);
+          }}
+          onClose={() => setShowVendorSelect(false)}
+        />
+      </Modal>
+
+      {/* Brand Selection Modal */}
+      <Modal
+        visible={showBrandSelect}
+        animationType="slide"
+        presentationStyle="pageSheet"
+      >
+        <BrandSelect
+          selectedBrand={formData.brand}
+          onSelect={(brand) => {
+            updateField('brand', brand);
+            setShowBrandSelect(false);
+          }}
+          onClose={() => setShowBrandSelect(false)}
+        />
+      </Modal>
+
+      {/* Collection Selection Modal */}
+      <Modal
+        visible={showCollectionSelect}
+        animationType="slide"
+        presentationStyle="pageSheet"
+      >
+        <CollectionSelect
+          selectedCollection={selectedCollectionId}
+          onSelect={(collectionId, collectionName) => {
+            setSelectedCollectionId(collectionId || null);
+            setSelectedCollectionName(collectionName || null);
+            setShowCollectionSelect(false);
+          }}
+          onClose={() => setShowCollectionSelect(false)}
+        />
+      </Modal>
+
+      {/* Options Selection Modal */}
+      <Modal
+        visible={showOptionsSelect}
+        animationType="slide"
+        presentationStyle="pageSheet"
+      >
+        <Options
+          mode="selection"
+          onClose={() => setShowOptionsSelect(false)}
+          onOptionsSelected={(optionSetId, selectedOptions) => {
+            setSelectedOptionSets(prev => ({
+              ...prev,
+              [optionSetId]: selectedOptions
+            }));
+            // Update the product options field
+            updateField('options', selectedOptionSets);
+          }}
+          initialSelectedOptions={[]}
+        />
+      </Modal>
+
+      {/* Label/SKU Bottom Drawer */}
+      <Modal
+        visible={showLabelSkuDrawer}
+        transparent={true}
+        animationType="slide"
+        onRequestClose={() => setShowLabelSkuDrawer(false)}
+      >
+        <TouchableOpacity
+          style={{
+            flex: 1,
+            backgroundColor: 'rgba(0, 0, 0, 0.5)',
+            justifyContent: 'flex-end',
+          }}
+          activeOpacity={1}
+          onPress={() => setShowLabelSkuDrawer(false)}
+        >
+          <TouchableOpacity
+            style={{
+              backgroundColor: '#fff',
+              width: '100%',
+              borderTopWidth: 1,
+              borderTopColor: '#E5E7EB',
+              paddingTop: 20,
+              paddingBottom: 40,
+              paddingHorizontal: 20,
+            }}
+            activeOpacity={1}
+          >
+            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
+              <TouchableOpacity onPress={() => setShowLabelSkuDrawer(false)}>
+                <Text style={{ fontSize: 16, color: '#6B7280' }}>Close</Text>
+              </TouchableOpacity>
+              <Text style={{ fontSize: 18, fontWeight: '600', color: '#111827' }}>
+                SKU Details
+              </Text>
+              <TouchableOpacity onPress={() => setShowLabelSkuDrawer(false)}>
+                <Text style={{ fontSize: 16, fontWeight: '600', color: '#3B82F6' }}>Save</Text>
+              </TouchableOpacity>
+            </View>
+
+            <Input
+              label="SKU"
+              placeholder="Enter SKU"
+              value={formData.sku}
+              onChangeText={(value) => updateField('sku', value)}
+              variant="outline"
+            />
+          </TouchableOpacity>
+        </TouchableOpacity>
+      </Modal>
+
+      {/* Status Bottom Drawer */}
+      <Modal
+        visible={showStatusDrawer}
+        transparent={true}
+        animationType="slide"
+        onRequestClose={() => setShowStatusDrawer(false)}
+      >
+        <TouchableOpacity
+          style={{
+            flex: 1,
+            backgroundColor: 'transparent',
+            justifyContent: 'flex-end',
+          }}
+          activeOpacity={1}
+          onPress={() => setShowStatusDrawer(false)}
+        >
+          <View style={{
+            backgroundColor: '#fff',
+            width: '100%',
+            borderTopWidth: 1,
+            borderTopColor: '#E5E7EB',
+            paddingTop: 20,
+            paddingBottom: 40,
+            paddingHorizontal: 20,
+          }}>
+            <TouchableOpacity
+              style={{
+                backgroundColor: formData.status ? '#F3F4F6' : '#fff',
+                borderWidth: 1,
+                borderColor: '#E5E7EB',
+                borderRadius: 8,
+                paddingVertical: 16,
+                paddingHorizontal: 16,
+                marginBottom: 12,
+              }}
+              onPress={() => {
+                updateField('status', true);
+                setShowStatusDrawer(false);
+              }}
+            >
+              <Text style={{ fontSize: 16, fontWeight: '500', color: '#111827' }}>Active</Text>
+              <Text style={{ fontSize: 14, color: '#6B7280', marginTop: 4 }}>
+                Product is visible and available for sale
+              </Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={{
+                backgroundColor: !formData.status ? '#F3F4F6' : '#fff',
+                borderWidth: 1,
+                borderColor: '#E5E7EB',
+                borderRadius: 8,
+                paddingVertical: 16,
+                paddingHorizontal: 16,
+              }}
+              onPress={() => {
+                updateField('status', false);
+                setShowStatusDrawer(false);
+              }}
+            >
+              <Text style={{ fontSize: 16, fontWeight: '500', color: '#111827' }}>Draft</Text>
+              <Text style={{ fontSize: 14, color: '#6B7280', marginTop: 4 }}>
+                Product is hidden and not available for sale
+              </Text>
+            </TouchableOpacity>
+          </View>
+        </TouchableOpacity>
+      </Modal>
+
+      {/* Image Upload Bottom Drawer */}
+      <Modal
+        visible={showImageUpload}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={() => setShowImageUpload(false)}
+      >
+        <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' }}>
+          <TouchableOpacity
+            style={{ flex: 1 }}
+            activeOpacity={1}
+            onPress={() => setShowImageUpload(false)}
+          />
+
+          <View style={{
+            backgroundColor: '#fff',
+            borderTopLeftRadius: 16,
+            borderTopRightRadius: 16,
+            paddingTop: 8,
+            paddingBottom: 34,
+            maxHeight: '80%'
+          }}>
+            {/* Handle */}
+            <View style={{
+              width: 36,
+              height: 4,
+              backgroundColor: '#E5E7EB',
+              borderRadius: 2,
+              alignSelf: 'center',
+              marginBottom: 16
+            }} />
+
+            {/* Header */}
+            <View style={{
+              paddingHorizontal: 16,
+              paddingBottom: 16,
+              borderBottomWidth: 1,
+              borderBottomColor: '#F3F4F6'
+            }}>
+              <Text style={{ fontSize: 18, fontWeight: '600', color: '#111827', textAlign: 'center' }}>
+                Add Photo
+              </Text>
+            </View>
+
+            {/* Options */}
+            <View style={{ paddingTop: 8 }}>
+              <TouchableOpacity
+                style={{
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  paddingVertical: 16,
+                  paddingHorizontal: 16,
+                }}
+                onPress={async () => {
+                  // Take photo
+                  const { status } = await ImagePicker.requestCameraPermissionsAsync();
+                  if (status !== 'granted') {
+                    Alert.alert('Permission Required', 'Please grant camera permissions to take photos.');
+                    return;
+                  }
+
+                  try {
+                    const result = await ImagePicker.launchCameraAsync({
+                      mediaTypes: 'Images' as any,
+                      quality: 0.8,
+                      exif: false,
+                    });
+
+                    if (!result.canceled && result.assets.length > 0) {
+                      setShowImageUpload(false);
+                      setImageUploading(true);
+
+                      try {
+                        // Handle upload
+                        const asset = result.assets[0];
+                        const mediaFile = {
+                          uri: asset.uri,
+                          name: asset.fileName || `image_${Date.now()}.jpg`,
+                          type: 'image/jpeg',
+                          size: asset.fileSize,
+                        };
+
+                        const uploadResult = await r2Service.uploadFile(mediaFile, 'products');
+                        if (uploadResult.success && uploadResult.url) {
+                          // Update image field for Core tab
+                          updateField('image', uploadResult.url);
+
+                          // Also add to media array if we're in Media tab
+                          if (activeTab === 'media') {
+                            const newMediaItem: MediaItem = {
+                              url: uploadResult.url,
+                              key: uploadResult.key,
+                              type: 'image/jpeg',
+                            };
+                            const currentMedia = formData.medias || [];
+                            const newMedia = [...currentMedia, newMediaItem];
+                            updateField('medias', newMedia);
+                          }
+                        } else {
+                          Alert.alert('Upload Failed', uploadResult.error || 'Unknown error occurred');
+                        }
+                      } catch (error) {
+                        Alert.alert('Upload Failed', 'An error occurred during upload');
+                      } finally {
+                        setImageUploading(false);
+                      }
+                    }
+                  } catch (error) {
+                    Alert.alert('Error', 'Failed to take photo');
+                  }
+                }}
+              >
+                <View style={{
+                  width: 40,
+                  height: 40,
+                  backgroundColor: '#F3F4F6',
+                  borderRadius: 20,
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  marginRight: 16
+                }}>
+                  <MaterialIcons name="camera-alt" size={20} color="#6B7280" />
+                </View>
+                <Text style={{ fontSize: 16, color: '#111827', fontWeight: '500' }}>
+                  Take Photo
+                </Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={{
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  paddingVertical: 16,
+                  paddingHorizontal: 16,
+                }}
+                onPress={async () => {
+                  // Choose from library
+                  const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+                  if (status !== 'granted') {
+                    Alert.alert('Permission Required', 'Please grant camera roll permissions to upload images.');
+                    return;
+                  }
+
+                  try {
+                    const result = await ImagePicker.launchImageLibraryAsync({
+                      mediaTypes: 'Images' as any,
+                      quality: 0.8,
+                      exif: false,
+                    });
+
+                    if (!result.canceled && result.assets.length > 0) {
+                      setShowImageUpload(false);
+                      setImageUploading(true);
+
+                      try {
+                        // Handle upload
+                        const asset = result.assets[0];
+                        const mediaFile = {
+                          uri: asset.uri,
+                          name: asset.fileName || `image_${Date.now()}.jpg`,
+                          type: 'image/jpeg',
+                          size: asset.fileSize,
+                        };
+
+                        const uploadResult = await r2Service.uploadFile(mediaFile, 'products');
+                        if (uploadResult.success && uploadResult.url) {
+                          // Update image field for Core tab
+                          updateField('image', uploadResult.url);
+
+                          // Also add to media array if we're in Media tab
+                          if (activeTab === 'media') {
+                            const newMediaItem: MediaItem = {
+                              url: uploadResult.url,
+                              key: uploadResult.key,
+                              type: 'image/jpeg',
+                            };
+                            const currentMedia = formData.medias || [];
+                            const newMedia = [...currentMedia, newMediaItem];
+                            updateField('medias', newMedia);
+                          }
+                        } else {
+                          Alert.alert('Upload Failed', uploadResult.error || 'Unknown error occurred');
+                        }
+                      } catch (error) {
+                        Alert.alert('Upload Failed', 'An error occurred during upload');
+                      } finally {
+                        setImageUploading(false);
+                      }
+                    }
+                  } catch (error) {
+                    Alert.alert('Error', 'Failed to pick image');
+                  }
+                }}
+              >
+                <View style={{
+                  width: 40,
+                  height: 40,
+                  backgroundColor: '#F3F4F6',
+                  borderRadius: 20,
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  marginRight: 16
+                }}>
+                  <MaterialIcons name="photo-library" size={20} color="#6B7280" />
+                </View>
+                <Text style={{ fontSize: 16, color: '#111827', fontWeight: '500' }}>
+                  Choose from Library
+                </Text>
+              </TouchableOpacity>
+
+              {formData.image && (
+                <TouchableOpacity
+                  style={{
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    paddingVertical: 16,
+                    paddingHorizontal: 16,
+                  }}
+                  onPress={() => {
+                    updateField('image', '');
+                    setShowImageUpload(false);
+                  }}
+                >
+                  <View style={{
+                    width: 40,
+                    height: 40,
+                    backgroundColor: '#FEF2F2',
+                    borderRadius: 20,
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    marginRight: 16
+                  }}>
+                    <MaterialIcons name="delete-outline" size={20} color="#EF4444" />
+                  </View>
+                  <Text style={{ fontSize: 16, color: '#EF4444', fontWeight: '500' }}>
+                    Remove Photo
+                  </Text>
+                </TouchableOpacity>
+              )}
+            </View>
+          </View>
+        </View>
       </Modal>
     </View>
   );

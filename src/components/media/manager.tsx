@@ -13,6 +13,9 @@ interface MediaManagerProps {
   prefix?: string;
   title?: string;
   description?: string;
+  useCustomUpload?: boolean;
+  onCustomUpload?: () => void;
+  customUploading?: boolean;
 }
 
 export default function MediaManager({
@@ -23,6 +26,9 @@ export default function MediaManager({
   prefix = 'products',
   title = 'Media Files',
   description = 'Upload images and videos for this product',
+  useCustomUpload = false,
+  onCustomUpload,
+  customUploading = false,
 }: MediaManagerProps) {
   const [media, setMedia] = useState<MediaItem[]>(initialMedia);
   const [uploading, setUploading] = useState(false);
@@ -91,11 +97,9 @@ export default function MediaManager({
 
     try {
       const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        mediaTypes: 'Images' as any,
         allowsMultipleSelection: allowMultiple,
         quality: 0.8,
-        maxWidth: 1920,
-        maxHeight: 1920,
         exif: false,
       });
 
@@ -147,9 +151,9 @@ export default function MediaManager({
         onRemove={handleRemoveMedia}
         maxItems={maxItems}
         editable={true}
-        showUpload={showPicker && !uploading && canUploadMore}
-        onUploadPress={handleUploadPress}
-        uploading={uploading}
+        showUpload={showPicker && !(useCustomUpload ? customUploading : uploading) && canUploadMore}
+        onUploadPress={useCustomUpload ? onCustomUpload : handleUploadPress}
+        uploading={useCustomUpload ? customUploading : uploading}
       />
 
       {/* Status Messages */}

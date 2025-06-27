@@ -58,7 +58,7 @@ export default function OptionsList({ onNavigateToCreate, onNavigateToSelect, on
   };
 
   const filteredOptionSets = optionSets.filter(set =>
-    set.set.toLowerCase().includes(searchQuery.toLowerCase())
+    set.set?.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
 
@@ -98,9 +98,6 @@ export default function OptionsList({ onNavigateToCreate, onNavigateToSelect, on
         {filteredOptionSets.length === 0 ? (
           <View className="flex-1 justify-center items-center p-8">
             <View className="items-center">
-              <View className="w-16 h-16 bg-gray-200 rounded-full items-center justify-center mb-4">
-                <Text className="text-2xl">⚙️</Text>
-              </View>
               <Text className="text-lg font-medium text-gray-900 mb-2">No option sets found</Text>
               <Text className="text-gray-500 text-center">
                 {searchQuery ? 'Try adjusting your search' : 'Add your first option set to get started'}
@@ -117,11 +114,6 @@ export default function OptionsList({ onNavigateToCreate, onNavigateToSelect, on
                 className="border-b border-gray-100 px-4 py-4 bg-white"
               >
                 <View className="flex-row items-center">
-                  {/* Option Set Icon */}
-                  <View className="w-12 h-12 bg-gray-200 mr-3 items-center justify-center">
-                    <Text className="text-lg">⚙️</Text>
-                  </View>
-
                   {/* Option Set Info */}
                   <View className="flex-1">
                     <Text className="text-base font-medium text-gray-900 mb-1" numberOfLines={1}>

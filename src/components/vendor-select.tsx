@@ -72,7 +72,7 @@ export default function VendorSelect({ selectedVendor, onSelect, onClose }: Vend
   }
 
   const filteredVendors = vendors.filter(vendor =>
-    vendor.name.toLowerCase().includes(searchQuery.toLowerCase())
+    vendor.name?.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
   const handleAddVendor = async () => {
@@ -83,7 +83,7 @@ export default function VendorSelect({ selectedVendor, onSelect, onClose }: Vend
     }
 
     const existingVendor = vendors.find(v =>
-      v.name.toLowerCase() === searchQuery.trim().toLowerCase()
+      v.name?.toLowerCase() === searchQuery.trim().toLowerCase()
     );
 
     if (existingVendor) {

@@ -78,7 +78,7 @@ export default function CollectionSelect({ selectedCollection, onSelect, onClose
   }
 
   const filteredCollections = collections.filter(collection =>
-    collection.name.toLowerCase().includes(searchQuery.toLowerCase())
+    collection.name?.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
   const handleAddCollection = async () => {
@@ -89,7 +89,7 @@ export default function CollectionSelect({ selectedCollection, onSelect, onClose
     }
 
     const existingCollection = collections.find(c =>
-      c.name.toLowerCase() === searchQuery.trim().toLowerCase()
+      c.name?.toLowerCase() === searchQuery.trim().toLowerCase()
     );
 
     if (existingCollection) {

@@ -151,7 +151,7 @@ export default function MediaManager({
         onRemove={handleRemoveMedia}
         maxItems={maxItems}
         editable={true}
-        showUpload={showPicker && !(useCustomUpload ? customUploading : uploading) && canUploadMore}
+        showUpload={showPicker && canUploadMore}
         onUploadPress={useCustomUpload ? onCustomUpload : handleUploadPress}
         uploading={useCustomUpload ? customUploading : uploading}
       />
@@ -161,14 +161,6 @@ export default function MediaManager({
         <View className="bg-blue-50 border border-blue-200 p-3">
           <Text className="text-blue-800 text-sm">
             Maximum of {maxItems} media files reached
-          </Text>
-        </View>
-      )}
-
-      {uploading && (
-        <View className="bg-gray-50 border border-gray-200 p-3">
-          <Text className="text-gray-700 text-sm">
-            Uploading media to cloud storage...
           </Text>
         </View>
       )}

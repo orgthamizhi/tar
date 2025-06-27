@@ -73,7 +73,7 @@ export default function CategorySelect({ selectedCategory, onSelect, onClose }: 
   }
 
   const filteredCategories = categories.filter(category =>
-    category.name.toLowerCase().includes(searchQuery.toLowerCase())
+    category.name?.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
   const handleAddCategory = async () => {
@@ -84,7 +84,7 @@ export default function CategorySelect({ selectedCategory, onSelect, onClose }: 
     }
 
     const existingCategory = categories.find(c =>
-      c.name.toLowerCase() === searchQuery.trim().toLowerCase()
+      c.name?.toLowerCase() === searchQuery.trim().toLowerCase()
     );
 
     if (existingCategory) {

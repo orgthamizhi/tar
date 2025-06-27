@@ -66,6 +66,7 @@ export interface CreateOptionData {
   value: string;
   order: number;
   storeId: string;
+  group?: string;
 }
 
 export interface IdentifierData {
@@ -394,6 +395,7 @@ export const createOption = async (data: CreateOptionData) => {
         value: data.value,
         order: data.order,
         storeId: data.storeId,
+        group: data.group,
       })
     ]);
 
@@ -430,6 +432,7 @@ export const updateOption = async (optionId: string, data: Partial<CreateOptionD
     if (data.value !== undefined) updateData.value = data.value;
     if (data.identifier !== undefined) updateData.identifier = data.identifier;
     if (data.order !== undefined) updateData.order = data.order;
+    if (data.group !== undefined) updateData.group = data.group;
 
     await db.transact([db.tx.options[optionId].update(updateData)]);
     return { success: true };

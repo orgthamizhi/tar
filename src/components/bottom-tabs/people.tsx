@@ -121,9 +121,9 @@ export default function PeopleContent({ currentScreen }: PeopleContentProps) {
   };
 
   const filteredMembers = teamMembers.filter(member =>
-    member.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    member.role.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    member.email.toLowerCase().includes(searchQuery.toLowerCase())
+    member.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    member.role?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    member.email?.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
   const handleContactMember = (member: TeamMember) => {

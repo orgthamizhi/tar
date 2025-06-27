@@ -54,10 +54,10 @@ export default function ProductsScreen({ isGridView = false, onProductFormOpen, 
     const searchTerm = searchQuery.toLowerCase();
 
     // Search filter
-    const matchesSearch = title.toLowerCase().includes(searchTerm) ||
-           category.toLowerCase().includes(searchTerm) ||
-           brand.toLowerCase().includes(searchTerm) ||
-           tags.toLowerCase().includes(searchTerm);
+    const matchesSearch = title?.toLowerCase().includes(searchTerm) ||
+           category?.toLowerCase().includes(searchTerm) ||
+           brand?.toLowerCase().includes(searchTerm) ||
+           tags?.toLowerCase().includes(searchTerm);
 
     // Status filter
     let matchesStatus = true;

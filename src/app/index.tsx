@@ -11,13 +11,15 @@ import SalesScreen from "../components/sales";
 import ReportsScreen from "../components/reports";
 import FullScreenMenu from "../components/menu";
 import Options from "../components/options";
+import CreateScreen from "../screens/create";
+import OptionSetEditScreen from "../screens/option-set-edit-screen";
 import BottomNavigation, { BottomTab, MainScreen } from "../components/nav";
 import BottomTabContent from "../components/tabs";
 import { runMigrationIfNeeded } from "../lib/migrate-products";
 import { completeMigrationProcess } from "../lib/cleanup-legacy";
 import { StoreProvider } from "../lib/store-context";
 
-type Screen = 'dashboard' | 'sales' | 'reports' | 'products' | 'collections' | 'options' | 'menu';
+type Screen = 'dashboard' | 'sales' | 'reports' | 'products' | 'collections' | 'options' | 'menu' | 'option-create' | 'option-edit';
 
 export default function Page() {
   const [currentScreen, setCurrentScreen] = useState<Screen>('dashboard');
@@ -27,6 +29,7 @@ export default function Page() {
   const [showManagement, setShowManagement] = useState(false); // false = product/collection list (default), true = management screen
   const [productFormProduct, setProductFormProduct] = useState<any>(null); // Track product being edited in form
   const [isProductFormOpen, setIsProductFormOpen] = useState(false); // Track if product form is open
+  const [optionSetData, setOptionSetData] = useState<{id?: string, name?: string}>({});
 
   // Run complete migration process on app startup
   useEffect(() => {
@@ -72,6 +75,12 @@ export default function Page() {
         return true;
       }
 
+      // If in option create/edit screens, go back to options
+      if (currentScreen === 'option-create' || currentScreen === 'option-edit') {
+        setCurrentScreen('options');
+        return true;
+      }
+
       // If in menu, go back to dashboard
       if (currentScreen === 'menu') {
         setCurrentScreen('dashboard');
@@ -96,19 +105,23 @@ export default function Page() {
     return () => backHandler.remove();
   }, [currentScreen, showManagement, showBottomTabs, isProductFormOpen]);
 
-  const handleNavigate = (screen: Screen) => {
+  const handleNavigate = (screen: Screen, data?: any) => {
     setCurrentScreen(screen);
     // All screens except menu show bottom tabs by default (untoggled state)
-    if (screen !== 'menu') {
+    if (screen !== 'menu' && screen !== 'option-create' && screen !== 'option-edit') {
       setShowBottomTabs(true); // Dashboard, sales, reports, products, collections start untoggled (tabs shown)
     }
     // Reset to workspace tab when changing main screens
-    if (screen !== 'menu') {
+    if (screen !== 'menu' && screen !== 'option-create' && screen !== 'option-edit') {
       setActiveBottomTab('workspace');
     }
     // Reset management view when navigating to products/collections
     if (screen === 'products' || screen === 'collections') {
       setShowManagement(false);
+    }
+    // Handle option screen data
+    if (screen === 'option-create' || screen === 'option-edit') {
+      setOptionSetData(data || {});
     }
   };
 
@@ -159,7 +172,30 @@ export default function Page() {
       case 'collections':
         return <CollectionsScreen isGridView={isGridView} />;
       case 'options':
-        return <Options onClose={() => handleNavigate('dashboard')} />;
+        return <Options
+          onClose={() => handleNavigate('dashboard')}
+          onNavigateToCreate={() => handleNavigate('option-create')}
+          onNavigateToEdit={(id: string, name: string) => handleNavigate('option-edit', { id, name })}
+        />;
+      case 'option-create':
+        return <CreateScreen
+          navigation={{
+            goBack: () => handleNavigate('options')
+          }}
+          route={{}}
+        />;
+      case 'option-edit':
+        return <OptionSetEditScreen
+          navigation={{
+            goBack: () => handleNavigate('options')
+          }}
+          route={{
+            params: {
+              optionSetId: optionSetData.id,
+              optionSetName: optionSetData.name
+            }
+          }}
+        />;
       case 'menu':
         return <FullScreenMenu
           onNavigate={handleNavigate}
@@ -173,8 +209,8 @@ export default function Page() {
   return (
     <StoreProvider>
       <View className="flex flex-1">
-        {currentScreen === 'menu' ? (
-          // Menu screen without header or bottom navigation
+        {currentScreen === 'menu' || currentScreen === 'option-create' || currentScreen === 'option-edit' ? (
+          // Full screen screens without header or bottom navigation
           renderMainContent()
         ) : (
           // All other screens with header and bottom navigation
@@ -378,6 +414,8 @@ function Header({ currentScreen, onNavigate, showBottomTabs, setShowBottomTabs, 
         return { title: 'Products', icon: '📦' };
       case 'collections':
         return { title: 'Collections', icon: '🏷️' };
+      case 'options':
+        return { title: 'Options', icon: 'O' };
       case 'sales':
         return { title: 'Sales', icon: '💰' };
       case 'reports':

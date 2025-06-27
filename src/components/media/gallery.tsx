@@ -129,7 +129,14 @@ export default function MediaGallery({
       >
         {uploading ? (
           <Animated.View style={{ transform: [{ rotate: spin }] }}>
-            <MaterialIcons name="refresh" size={32} color="#3B82F6" />
+            <View style={{
+              width: 32,
+              height: 32,
+              borderRadius: 16,
+              borderWidth: 3,
+              borderColor: '#E5E7EB',
+              borderTopColor: '#9CA3AF',
+            }} />
           </Animated.View>
         ) : (
           <MaterialIcons name="add" size={32} color="#9CA3AF" />

@@ -68,20 +68,28 @@ export default function IdentifierDrawer({
       transparent={true}
       onRequestClose={onClose}
     >
-      <View style={{
-        flex: 1,
-        backgroundColor: 'rgba(0, 0, 0, 0.5)',
-        justifyContent: 'flex-end',
-      }}>
-        <View style={{
-          backgroundColor: 'white',
-          borderTopLeftRadius: 16,
-          borderTopRightRadius: 16,
-          paddingTop: 20,
-          paddingBottom: 40,
-          paddingHorizontal: 20,
-          minHeight: 400,
-        }}>
+      <TouchableOpacity
+        style={{
+          flex: 1,
+          backgroundColor: 'rgba(0, 0, 0, 0)',
+          justifyContent: 'flex-end',
+        }}
+        activeOpacity={1}
+        onPress={onClose}
+      >
+        <TouchableOpacity
+          style={{
+            backgroundColor: 'white',
+            borderTopWidth: 1,
+            borderTopColor: '#E5E7EB',
+            paddingTop: 20,
+            paddingBottom: 40,
+            paddingHorizontal: 20,
+            minHeight: 300,
+          }}
+          activeOpacity={1}
+          onPress={(e) => e.stopPropagation()}
+        >
           {/* Header */}
           <View style={{
             flexDirection: 'row',
@@ -90,10 +98,10 @@ export default function IdentifierDrawer({
             marginBottom: 24,
           }}>
             <TouchableOpacity onPress={onClose}>
-              <MaterialIcons name="close" size={24} color="#111827" />
+              <Text style={{ fontSize: 16, color: '#6B7280' }}>Close</Text>
             </TouchableOpacity>
             <Text style={{ fontSize: 18, fontWeight: '600', color: '#111827' }}>
-              Edit POS tile
+              Edit Option
             </Text>
             <TouchableOpacity
               onPress={handleSave}
@@ -111,52 +119,7 @@ export default function IdentifierDrawer({
             </TouchableOpacity>
           </View>
 
-          {/* Preview Card */}
-          <View style={{
-            backgroundColor: '#111827',
-            borderRadius: 8,
-            padding: 20,
-            alignItems: 'center',
-            justifyContent: 'center',
-            height: 120,
-            marginBottom: 24,
-          }}>
-            <Text style={{ 
-              fontSize: 24, 
-              fontWeight: '600', 
-              color: 'white',
-              textAlign: 'center' 
-            }}>
-              {tileLabel.slice(0, 2).toUpperCase() || 'CO'}
-            </Text>
-            <Text style={{ 
-              fontSize: 14, 
-              color: '#9CA3AF',
-              marginTop: 8,
-              textAlign: 'center' 
-            }}>
-              {tileLabel || 'coffee'}
-            </Text>
-          </View>
 
-          <Text style={{ 
-            fontSize: 16, 
-            color: '#3B82F6', 
-            textAlign: 'center',
-            marginBottom: 24 
-          }}>
-            Edit POS tile
-          </Text>
-
-          {/* Details Section */}
-          <Text style={{ 
-            fontSize: 18, 
-            fontWeight: '600', 
-            color: '#111827',
-            marginBottom: 16 
-          }}>
-            Details
-          </Text>
 
           {/* Tile Label Input */}
           <TextInput
@@ -171,86 +134,14 @@ export default function IdentifierDrawer({
               color: '#111827',
               marginBottom: 24,
             }}
-            placeholder="Tile label"
+            placeholder="Value"
             placeholderTextColor="#9CA3AF"
             value={tileLabel}
             onChangeText={setTileLabel}
           />
 
-          {/* Type Selection */}
-          <View style={{
-            flexDirection: 'row',
-            marginBottom: 24,
-          }}>
-            <TouchableOpacity
-              onPress={() => setSelectedType('image')}
-              style={{
-                flex: 1,
-                backgroundColor: selectedType === 'image' ? '#E5E7EB' : '#F3F4F6',
-                paddingVertical: 12,
-                alignItems: 'center',
-                borderTopLeftRadius: 8,
-                borderBottomLeftRadius: 8,
-              }}
-            >
-              <Text style={{ 
-                fontSize: 16, 
-                color: selectedType === 'image' ? '#111827' : '#6B7280' 
-              }}>
-                Image
-              </Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              onPress={() => setSelectedType('color')}
-              style={{
-                flex: 1,
-                backgroundColor: selectedType === 'color' ? '#E5E7EB' : '#F3F4F6',
-                paddingVertical: 12,
-                alignItems: 'center',
-              }}
-            >
-              <Text style={{ 
-                fontSize: 16, 
-                color: selectedType === 'color' ? '#111827' : '#6B7280' 
-              }}>
-                Colour
-              </Text>
-            </TouchableOpacity>
-          </View>
-
-          {/* Action Buttons */}
-          {selectedType === 'image' && (
-            <View style={{ gap: 16 }}>
-              <TouchableOpacity style={{
-                flexDirection: 'row',
-                alignItems: 'center',
-                paddingVertical: 16,
-              }}>
-                <MaterialIcons name="photo-library" size={24} color="#111827" style={{ marginRight: 16 }} />
-                <Text style={{ fontSize: 16, color: '#111827' }}>Choose from library</Text>
-              </TouchableOpacity>
-              
-              <TouchableOpacity style={{
-                flexDirection: 'row',
-                alignItems: 'center',
-                paddingVertical: 16,
-              }}>
-                <MaterialIcons name="camera-alt" size={24} color="#111827" style={{ marginRight: 16 }} />
-                <Text style={{ fontSize: 16, color: '#111827' }}>Take a photo</Text>
-              </TouchableOpacity>
-              
-              <TouchableOpacity style={{
-                flexDirection: 'row',
-                alignItems: 'center',
-                paddingVertical: 16,
-              }}>
-                <MaterialIcons name="delete" size={24} color="#9CA3AF" style={{ marginRight: 16 }} />
-                <Text style={{ fontSize: 16, color: '#9CA3AF' }}>Remove image</Text>
-              </TouchableOpacity>
-            </View>
-          )}
-        </View>
-      </View>
+        </TouchableOpacity>
+      </TouchableOpacity>
     </Modal>
   );
 }

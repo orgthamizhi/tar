@@ -74,7 +74,7 @@ export default function TypeSelect({ selectedType, onSelect, onClose }: TypeSele
   }
 
   const filteredTypes = types.filter(type =>
-    type.name.toLowerCase().includes(searchQuery.toLowerCase())
+    type.name?.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
   const handleAddType = async () => {
@@ -86,7 +86,7 @@ export default function TypeSelect({ selectedType, onSelect, onClose }: TypeSele
 
     // Check if type already exists
     const existingType = types.find(t =>
-      t.name.toLowerCase() === searchQuery.trim().toLowerCase()
+      t.name?.toLowerCase() === searchQuery.trim().toLowerCase()
     );
 
     if (existingType) {

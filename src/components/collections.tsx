@@ -25,7 +25,7 @@ export default function CollectionsScreen({ isGridView = false }: CollectionsScr
 
   const collections = data?.collections || [];
   const filteredCollections = collections.filter((collection: any) =>
-    collection.name.toLowerCase().includes(searchQuery.toLowerCase())
+    collection.name?.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
   const handleAdd = () => {

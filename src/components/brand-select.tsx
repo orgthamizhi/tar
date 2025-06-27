@@ -72,7 +72,7 @@ export default function BrandSelect({ selectedBrand, onSelect, onClose }: BrandS
   }
 
   const filteredBrands = brands.filter(brand =>
-    brand.name.toLowerCase().includes(searchQuery.toLowerCase())
+    brand.name?.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
   const handleAddBrand = async () => {
@@ -83,7 +83,7 @@ export default function BrandSelect({ selectedBrand, onSelect, onClose }: BrandS
     }
 
     const existingBrand = brands.find(b =>
-      b.name.toLowerCase() === searchQuery.trim().toLowerCase()
+      b.name?.toLowerCase() === searchQuery.trim().toLowerCase()
     );
 
     if (existingBrand) {

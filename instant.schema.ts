@@ -33,7 +33,7 @@ const _schema = i.schema({
       storeId: i.string().indexed(),
       updatedAt: i.date(),
     }),
-    inventory: i.entity({
+    items: i.entity({
       available: i.number().optional(),
       barcode: i.string().optional(),
       committed: i.number().optional(),
@@ -83,6 +83,7 @@ const _schema = i.schema({
       identifier: i.string().optional(),
       order: i.number().optional(),
       set: i.string().optional(),
+      group: i.string().optional(),
       storeId: i.string().indexed(),
       value: i.string().optional(),
     }),
@@ -226,10 +227,10 @@ const _schema = i.schema({
       forward: {
         on: "products",
         has: "many",
-        label: "inventory",
+        label: "item",
       },
       reverse: {
-        on: "inventory",
+        on: "items",
         has: "one",
         label: "product",
       },

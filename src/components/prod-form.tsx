@@ -1,19 +1,18 @@
 import React, { useState, useCallback, useEffect, useRef } from 'react';
-import { View, Text, TouchableOpacity, Alert, TextInput, BackHandler, Modal, Animated } from 'react-native';
+import { View, Text, TouchableOpacity, Alert, TextInput, BackHandler, Modal, Animated, ScrollView } from 'react-native';
 import { id } from '@instantdb/react-native';
 import { MaterialIcons, Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import { RichText, Toolbar, useEditorBridge } from '@10play/tentap-editor';
 import Input from './ui/Input';
 import QuantitySelector from './ui/qty';
-import VerticalTabs, { TabContent, FieldGroup, VerticalTab } from './ui/vtabs';
+import { TabContent, FieldGroup } from './ui/vtabs';
 import R2Image from './ui/r2-image';
 import { db, getCurrentTimestamp } from '../lib/instant';
 import { MediaManager, MediaItem } from './media';
 import { useStore } from '../lib/store-context';
 import TypeSelect from './type-select';
 import CategorySelect from './category-select';
-import Options from './options';
 import { r2Service } from '../lib/r2-service';
 import VendorSelect from './vendor-select';
 import BrandSelect from './brand-select';
@@ -92,10 +91,8 @@ export default function ProductFormScreen({ product, onClose, onSave }: ProductF
   const [showVendorSelect, setShowVendorSelect] = useState(false);
   const [showBrandSelect, setShowBrandSelect] = useState(false);
   const [showCollectionSelect, setShowCollectionSelect] = useState(false);
-  const [showOptionsSelect, setShowOptionsSelect] = useState(false);
   const [selectedCollectionId, setSelectedCollectionId] = useState<string | null>(productCollection?.id || null);
   const [selectedCollectionName, setSelectedCollectionName] = useState<string | null>(productCollection?.name || null);
-  const [selectedOptionSets, setSelectedOptionSets] = useState<{[key: string]: string[]}>({});
   const [showLabelSkuDrawer, setShowLabelSkuDrawer] = useState(false);
   const [showStatusDrawer, setShowStatusDrawer] = useState(false);
   const [showImageUpload, setShowImageUpload] = useState(false);
@@ -289,7 +286,7 @@ export default function ProductFormScreen({ product, onClose, onSave }: ProductF
   };
 
   // Define tabs with their content
-  const tabs: VerticalTab[] = [
+  const tabs = [
     {
       id: 'core',
       label: 'Core',
@@ -333,7 +330,14 @@ export default function ProductFormScreen({ product, onClose, onSave }: ProductF
                         }],
                       }}
                     >
-                      <MaterialIcons name="refresh" size={24} color="#3B82F6" />
+                      <View style={{
+                        width: 24,
+                        height: 24,
+                        borderRadius: 12,
+                        borderWidth: 2,
+                        borderColor: '#E5E7EB',
+                        borderTopColor: '#9CA3AF',
+                      }} />
                     </Animated.View>
                     <Text style={{ color: '#6B7280', fontSize: 10, marginTop: 4, textAlign: 'center' }}>
                       Uploading...
@@ -693,36 +697,6 @@ export default function ProductFormScreen({ product, onClose, onSave }: ProductF
       ),
     },
     {
-      id: 'options',
-      label: 'Options',
-      icon: <Text style={{ fontSize: 16, fontWeight: '600', color: '#6B7280' }}>O</Text>,
-      content: (
-        <TabContent title="">
-          <FieldGroup title="Product Options">
-            <TouchableOpacity
-              style={{
-                backgroundColor: 'white',
-                borderWidth: 1,
-                borderColor: '#E5E7EB',
-                borderRadius: 8,
-                paddingVertical: 16,
-                paddingHorizontal: 16,
-              }}
-              onPress={() => setShowOptionsSelect(true)}
-            >
-              <Text style={{ fontSize: 16, fontWeight: '500', color: '#111827' }}>Options</Text>
-              <Text style={{ fontSize: 14, color: '#6B7280', marginTop: 4 }}>
-                {Object.keys(selectedOptionSets).length > 0
-                  ? `${Object.keys(selectedOptionSets).length} option set(s) selected`
-                  : 'Select option sets'
-                }
-              </Text>
-            </TouchableOpacity>
-          </FieldGroup>
-        </TabContent>
-      ),
-    },
-    {
       id: 'items',
       label: 'Items',
       icon: <Text style={{ fontSize: 16, fontWeight: '600', color: '#6B7280' }}>I</Text>,
@@ -806,19 +780,98 @@ export default function ProductFormScreen({ product, onClose, onSave }: ProductF
     },
   ];
 
+  const activeTabData = tabs.find(tab => tab.id === activeTab);
+
   return (
     <View style={{ flex: 1, backgroundColor: '#F9FAFB' }}>
-      {/* Vertical Tabs */}
-      <VerticalTabs
-        tabs={tabs}
-        activeTab={activeTab}
-        onTabChange={setActiveTab}
-        className="flex-1"
-        hasChanges={hasChanges}
-        onSave={handleSave}
-        onClose={onClose}
-        loading={loading}
-      />
+      {/* Horizontal Tabs - Icons Only */}
+      <View style={{
+        backgroundColor: '#fff',
+        borderBottomWidth: 1,
+        borderBottomColor: '#E5E7EB',
+        paddingTop: 8,
+      }}>
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={{ paddingHorizontal: 16 }}
+        >
+          {tabs.map((tab) => {
+            const isActive = tab.id === activeTab;
+            return (
+              <TouchableOpacity
+                key={tab.id}
+                onPress={() => setActiveTab(tab.id)}
+                style={{
+                  paddingVertical: 12,
+                  paddingHorizontal: 16,
+                  marginRight: 8,
+                  borderBottomWidth: 2,
+                  borderBottomColor: isActive ? '#3B82F6' : 'transparent',
+                }}
+                activeOpacity={0.7}
+              >
+                <View style={{
+                  alignItems: 'center',
+                  opacity: isActive ? 1 : 0.6
+                }}>
+                  {tab.icon}
+                </View>
+              </TouchableOpacity>
+            );
+          })}
+        </ScrollView>
+      </View>
+
+      {/* Content Area */}
+      <View style={{ flex: 1, backgroundColor: '#fff' }}>
+        {activeTabData && (
+          <ScrollView
+            style={{ flex: 1 }}
+            showsVerticalScrollIndicator={false}
+            contentContainerStyle={{ paddingBottom: hasChanges ? 100 : 32 }}
+          >
+            {activeTabData.content}
+          </ScrollView>
+        )}
+      </View>
+
+      {/* Bottom Overlay Save Button - Shopify Style */}
+      {hasChanges && onSave && (
+        <View style={{
+          position: 'absolute',
+          bottom: 0,
+          left: 0,
+          right: 0,
+          backgroundColor: '#fff',
+          borderTopWidth: 1,
+          borderTopColor: '#E5E7EB',
+          paddingHorizontal: 16,
+          paddingVertical: 12,
+          paddingBottom: 34, // Account for safe area
+        }}>
+          <TouchableOpacity
+            onPress={onSave}
+            disabled={loading}
+            style={{
+              backgroundColor: loading ? '#9CA3AF' : '#000',
+              borderRadius: 8,
+              paddingVertical: 16,
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}
+            activeOpacity={0.8}
+          >
+            <Text style={{
+              color: '#fff',
+              fontSize: 16,
+              fontWeight: '600',
+            }}>
+              {loading ? 'Saving...' : 'Save'}
+            </Text>
+          </TouchableOpacity>
+        </View>
+      )}
 
       {/* Type Selection Modal */}
       <Modal
@@ -901,26 +954,7 @@ export default function ProductFormScreen({ product, onClose, onSave }: ProductF
         />
       </Modal>
 
-      {/* Options Selection Modal */}
-      <Modal
-        visible={showOptionsSelect}
-        animationType="slide"
-        presentationStyle="pageSheet"
-      >
-        <Options
-          mode="selection"
-          onClose={() => setShowOptionsSelect(false)}
-          onOptionsSelected={(optionSetId, selectedOptions) => {
-            setSelectedOptionSets(prev => ({
-              ...prev,
-              [optionSetId]: selectedOptions
-            }));
-            // Update the product options field
-            updateField('options', selectedOptionSets);
-          }}
-          initialSelectedOptions={[]}
-        />
-      </Modal>
+
 
       {/* Label/SKU Bottom Drawer */}
       <Modal

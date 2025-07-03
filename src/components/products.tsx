@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useCallback, useMemo } from 'react';
 import { View, Text, TextInput, TouchableOpacity, FlatList, Alert, Modal, Animated } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Feather, MaterialCommunityIcons } from '@expo/vector-icons';
@@ -6,6 +6,8 @@ import { db, formatCurrency } from '../lib/instant';
 import ProductFormScreen from './prod-form';
 import InventoryAdjustmentScreen from './inventory';
 import { useStore } from '../lib/store-context';
+import { log, trackError } from '../lib/logger';
+import { LoadingError, EmptyState } from './ui/error-boundary';
 
 import R2Image from './ui/r2-image';
 
@@ -16,6 +18,100 @@ interface ProductsScreenProps {
 }
 
 type FilterStatus = 'All' | 'Active' | 'Draft' | 'Archived';
+
+// Memoized product item component for better performance
+const ProductItem = React.memo(({
+  product,
+  isSelected,
+  isMultiSelectMode,
+  onPress,
+  onLongPress
+}: {
+  product: any;
+  isSelected: boolean;
+  isMultiSelectMode: boolean;
+  onPress: () => void;
+  onLongPress: () => void;
+}) => {
+  const getProductStatus = (product: any) => {
+    if (product.pos === true || product.isActive === true) return 'Active';
+    if (product.publish === false) return 'Draft';
+    return 'Archived';
+  };
+
+  const getVariantCount = (product: any) => {
+    return product.variants?.length || 5;
+  };
+
+  return (
+    <TouchableOpacity
+      onPress={onPress}
+      onLongPress={onLongPress}
+      className={`border-b border-gray-100 px-4 py-4 ${
+        isSelected ? 'bg-blue-50' : 'bg-white'
+      }`}
+      style={{
+        opacity: isMultiSelectMode && !isSelected ? 0.6 : 1
+      }}
+    >
+      <View className="flex-row items-center">
+        {/* Multi-select checkbox */}
+        {isMultiSelectMode && (
+          <View className="mr-3">
+            <View className={`w-6 h-6 rounded-full border-2 items-center justify-center ${
+              isSelected ? 'bg-blue-600 border-blue-600' : 'border-gray-300'
+            }`}>
+              {isSelected && (
+                <Feather name="check" size={14} color="white" />
+              )}
+            </View>
+          </View>
+        )}
+
+        {/* Product Image */}
+        <View className="w-12 h-12 bg-gray-200 mr-3 overflow-hidden">
+          {product.image ? (
+            <R2Image
+              url={product.image}
+              style={{ width: 48, height: 48 }}
+              fallback={
+                <View className="w-12 h-12 bg-gray-200 items-center justify-center">
+                  <Text className="text-lg">📦</Text>
+                </View>
+              }
+            />
+          ) : (
+            <View className="w-12 h-12 bg-gray-200 items-center justify-center">
+              <Text className="text-lg">📦</Text>
+            </View>
+          )}
+        </View>
+
+        {/* Product Details */}
+        <View className="flex-1">
+          <Text className="text-base font-medium text-gray-900 mb-1">
+            {product.title || 'Untitled Product'}
+          </Text>
+          <Text className="text-sm text-gray-500">
+            {getVariantCount(product)} variants • {getProductStatus(product)}
+          </Text>
+        </View>
+
+        {/* Price */}
+        <View className="items-end">
+          <Text className="text-base font-semibold text-gray-900">
+            {product.price ? formatCurrency(product.price) : '$0.00'}
+          </Text>
+          {product.saleprice && product.saleprice < product.price && (
+            <Text className="text-sm text-red-600 line-through">
+              {formatCurrency(product.saleprice)}
+            </Text>
+          )}
+        </View>
+      </View>
+    </TouchableOpacity>
+  );
+});
 
 export default function ProductsScreen({ isGridView = false, onProductFormOpen, onProductFormClose }: ProductsScreenProps) {
   const insets = useSafeAreaInsets();
@@ -40,37 +136,44 @@ export default function ProductsScreen({ isGridView = false, onProductFormOpen, 
           }
         }
       }
-    } : { products: {} }
+    } : null // Don't query if no store selected
   );
 
   const products = data?.products || [];
 
-  // Filter products based on search and status
-  const filteredProducts = products.filter((product: any) => {
-    const title = product.title || '';
-    const category = product.category || '';
-    const brand = product.brand || '';
-    const tags = product.tags || '';
-    const searchTerm = searchQuery.toLowerCase();
+  // Log query errors
+  if (error) {
+    trackError(new Error(`Products query failed: ${error}`), 'ProductsScreen');
+  }
 
-    // Search filter
-    const matchesSearch = title?.toLowerCase().includes(searchTerm) ||
-           category?.toLowerCase().includes(searchTerm) ||
-           brand?.toLowerCase().includes(searchTerm) ||
-           tags?.toLowerCase().includes(searchTerm);
+  // Filter products based on search and status - memoized for performance
+  const filteredProducts = useMemo(() => {
+    return products.filter((product: any) => {
+      const title = product.title || '';
+      const category = product.category || '';
+      const brand = product.brand || '';
+      const tags = product.tags || '';
+      const searchTerm = searchQuery.toLowerCase();
 
-    // Status filter
-    let matchesStatus = true;
-    if (activeFilter === 'Active') {
-      matchesStatus = product.pos === true || product.isActive === true;
-    } else if (activeFilter === 'Draft') {
-      matchesStatus = product.publish === false;
-    } else if (activeFilter === 'Archived') {
-      matchesStatus = product.pos === false && product.isActive === false;
-    }
+      // Search filter
+      const matchesSearch = title?.toLowerCase().includes(searchTerm) ||
+             category?.toLowerCase().includes(searchTerm) ||
+             brand?.toLowerCase().includes(searchTerm) ||
+             tags?.toLowerCase().includes(searchTerm);
 
-    return matchesSearch && matchesStatus;
-  });
+      // Status filter
+      let matchesStatus = true;
+      if (activeFilter === 'Active') {
+        matchesStatus = product.pos === true || product.isActive === true;
+      } else if (activeFilter === 'Draft') {
+        matchesStatus = product.publish === false;
+      } else if (activeFilter === 'Archived') {
+        matchesStatus = product.pos === false && product.isActive === false;
+      }
+
+      return matchesSearch && matchesStatus;
+    });
+  }, [products, searchQuery, activeFilter]);
 
   // Get product status for display
   const getProductStatus = (product: any) => {
@@ -85,22 +188,22 @@ export default function ProductsScreen({ isGridView = false, onProductFormOpen, 
     return product.variants?.length || 5; // Default to 5 variants as shown in image
   };
 
-  const handleEdit = (product: any) => {
+  const handleEdit = useCallback((product: any) => {
     setEditingProduct(product);
     setShowForm(true);
     onProductFormOpen?.(product);
-  };
+  }, [onProductFormOpen]);
 
-  const handleInventoryAdjustment = (product: any) => {
+  const handleInventoryAdjustment = useCallback((product: any) => {
     setEditingProduct(product);
     setShowInventoryAdjustment(true);
-  };
+  }, []);
 
-  const handleAddNew = () => {
+  const handleAddNew = useCallback(() => {
     setEditingProduct(null);
     setShowForm(true);
     onProductFormOpen?.(null);
-  };
+  }, [onProductFormOpen]);
 
   const handleLongPress = (product: any) => {
     if (!isMultiSelectMode) {
@@ -272,6 +375,64 @@ export default function ProductsScreen({ isGridView = false, onProductFormOpen, 
     );
   }
 
+  // Handle loading and error states
+  if (error) {
+    return (
+      <LoadingError
+        error={error.toString()}
+        onRetry={() => {
+          log.info('Retrying products query', 'ProductsScreen');
+          // The query will automatically retry when component re-renders
+        }}
+      />
+    );
+  }
+
+  if (!currentStore) {
+    return (
+      <EmptyState
+        icon="store"
+        title="No Store Selected"
+        description="Please select a store to view products"
+      />
+    );
+  }
+
+  if (!isLoading && filteredProducts.length === 0 && searchQuery === '') {
+    return (
+      <View className="flex-1 bg-white">
+        {/* Search Bar */}
+        <View className="border-t border-b border-gray-200 bg-white px-4 py-3">
+          <View className="flex-row items-center">
+            <TouchableOpacity onPress={handleAddNew}>
+              <Feather name="plus" size={20} color="#9CA3AF" />
+            </TouchableOpacity>
+            <TextInput
+              placeholder="Search"
+              value={searchQuery}
+              onChangeText={setSearchQuery}
+              className="flex-1 text-base text-gray-900 ml-3 mr-3"
+              placeholderTextColor="#9CA3AF"
+            />
+            <TouchableOpacity onPress={() => setShowFilterModal(true)}>
+              <MaterialCommunityIcons name="sort-ascending" size={20} color="#9CA3AF" />
+            </TouchableOpacity>
+          </View>
+        </View>
+
+        <EmptyState
+          icon="inventory"
+          title="No Products Yet"
+          description="Start by adding your first product to the inventory"
+          action={{
+            label: "Add Product",
+            onPress: handleAddNew
+          }}
+        />
+      </View>
+    );
+  }
+
   return (
     <View className="flex-1 bg-white">
       {/* Search Bar with top and bottom borders - NO spacing above */}
@@ -338,86 +499,25 @@ export default function ProductsScreen({ isGridView = false, onProductFormOpen, 
           <FlatList
             data={filteredProducts}
             showsVerticalScrollIndicator={false}
-            renderItem={({ item: product }) => {
-              const isSelected = selectedProducts.has(product.id);
-
-              return (
-                <TouchableOpacity
-                  onPress={() => handleProductSelect(product)}
-                  onLongPress={() => handleLongPress(product)}
-                  className={`border-b border-gray-100 px-4 py-4 ${
-                    isSelected ? 'bg-blue-50' : 'bg-white'
-                  }`}
-                  style={{
-                    opacity: isMultiSelectMode && !isSelected ? 0.6 : 1
-                  }}
-                >
-                  {/* List View Layout */}
-                  <View className="flex-row items-center">
-                    {/* Multi-select checkbox */}
-                    {isMultiSelectMode && (
-                      <View className="mr-3">
-                        <View className={`w-6 h-6 rounded-full border-2 items-center justify-center ${
-                          isSelected ? 'bg-blue-600 border-blue-600' : 'border-gray-300'
-                        }`}>
-                          {isSelected && (
-                            <Feather name="check" size={14} color="white" />
-                          )}
-                        </View>
-                      </View>
-                    )}
-
-                    {/* Product Image */}
-                    <View className="w-12 h-12 bg-gray-200 mr-3 overflow-hidden">
-                      {product.image ? (
-                        <R2Image
-                          url={product.image}
-                          style={{ width: 48, height: 48 }}
-                          fallback={
-                            <View className="w-12 h-12 bg-gray-200 items-center justify-center">
-                              <Text className="text-lg">📦</Text>
-                            </View>
-                          }
-                        />
-                      ) : (
-                        <View className="w-12 h-12 bg-gray-200 items-center justify-center">
-                          <Text className="text-lg">📦</Text>
-                        </View>
-                      )}
-                    </View>
-
-                    {/* Product Info */}
-                    <View className="flex-1">
-                      <Text className="text-base font-medium text-gray-900 mb-1" numberOfLines={1}>
-                        {product.title}
-                      </Text>
-                      <Text className="text-sm text-gray-500">
-                        {getVariantCount(product)} variants
-                      </Text>
-                    </View>
-
-                    {/* Status Badge */}
-                    {!isMultiSelectMode && (() => {
-                      const status = getProductStatus(product);
-                      const statusColors = {
-                        Active: 'bg-green-100 text-green-800',
-                        Draft: 'bg-yellow-100 text-yellow-800',
-                        Archived: 'bg-gray-100 text-gray-800'
-                      };
-                      const colorClass = statusColors[status as keyof typeof statusColors] || statusColors.Active;
-
-                      return (
-                        <View className={`${colorClass.split(' ')[0]} px-3 py-1 rounded-full`}>
-                          <Text className={`${colorClass.split(' ')[1]} text-sm font-medium`}>
-                            {status}
-                          </Text>
-                        </View>
-                      );
-                    })()}
-                  </View>
-                </TouchableOpacity>
-              );
-            }}
+            keyExtractor={(item) => item.id}
+            removeClippedSubviews={true}
+            maxToRenderPerBatch={10}
+            windowSize={10}
+            initialNumToRender={15}
+            getItemLayout={(data, index) => ({
+              length: 80, // Approximate height of each item
+              offset: 80 * index,
+              index,
+            })}
+            renderItem={({ item: product }) => (
+              <ProductItem
+                product={product}
+                isSelected={selectedProducts.has(product.id)}
+                isMultiSelectMode={isMultiSelectMode}
+                onPress={() => handleProductSelect(product)}
+                onLongPress={() => handleLongPress(product)}
+              />
+            )}
           />
         )}
       </View>

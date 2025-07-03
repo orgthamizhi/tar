@@ -70,19 +70,17 @@ export default function FullScreenMenu({ onNavigate, onClose }: FullScreenMenuPr
     },
     {
       id: 'products',
-      title: 'Products',
+      title: 'Product Management',
       icon: '📦',
       hasSubmenu: true,
       submenu: [
         {
           id: 'products',
           title: 'Products',
-          icon: '📦',
         },
         {
           id: 'options',
           title: 'Options',
-          icon: 'O',
         }
       ]
     },

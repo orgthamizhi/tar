@@ -49,6 +49,9 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         const store = stores.find(s => s.id === storedStoreId);
         if (store) {
           setCurrentStoreState(store);
+        } else {
+          // Stored store ID doesn't exist anymore, clear it
+          await AsyncStorage.removeItem(CURRENT_STORE_KEY);
         }
       }
     } catch (error) {
@@ -58,15 +61,29 @@ export function StoreProvider({ children }: { children: ReactNode }) {
 
   // Load current store from AsyncStorage when stores are available
   useEffect(() => {
-    if (stores.length > 0) {
+    if (stores.length > 0 && !currentStore) {
       loadCurrentStore();
     }
-  }, [stores]);
+  }, [stores.length]); // Only depend on stores.length to avoid infinite loops
 
   // Auto-select first store if none selected and stores exist
   useEffect(() => {
     if (!queryLoading && !currentStore && stores.length > 0) {
-      setCurrentStore(stores[0]);
+      // Only auto-select if we haven't tried to load from storage yet
+      const autoSelectFirstStore = async () => {
+        try {
+          const storedStoreId = await AsyncStorage.getItem(CURRENT_STORE_KEY);
+          if (!storedStoreId) {
+            // No stored preference, select first store
+            await setCurrentStore(stores[0]);
+          }
+        } catch (error) {
+          console.error('Error checking stored store:', error);
+          // Fallback to first store
+          await setCurrentStore(stores[0]);
+        }
+      };
+      autoSelectFirstStore();
     }
     setIsLoading(queryLoading);
   }, [stores, currentStore, queryLoading]);

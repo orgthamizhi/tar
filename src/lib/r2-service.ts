@@ -1,6 +1,7 @@
 import { S3Client, PutObjectCommand, DeleteObjectCommand, HeadObjectCommand, GetObjectCommand } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import { r2Config, validateR2Config, generateFileKey, getPublicUrl } from './r2-config';
+import { log, trackError, PerformanceMonitor } from './logger';
 
 export interface UploadResult {
   success: boolean;
@@ -42,12 +43,20 @@ class R2Service {
 
   async uploadFile(file: MediaFile, prefix: string = 'media'): Promise<UploadResult> {
     if (!this.client) {
+      log.error('R2 client not initialized', 'R2Service');
       return { success: false, error: 'R2 client not initialized' };
     }
 
+    log.info(`Starting file upload: ${file.name}`, 'R2Service', {
+      size: file.size,
+      type: file.type
+    });
+
     try {
-      // Generate unique key for the file
-      const key = generateFileKey(file.name, prefix);
+      return await PerformanceMonitor.measureAsync('r2-upload', async () => {
+        // Generate unique key for the file
+        const key = generateFileKey(file.name, prefix);
+        log.debug(`Generated file key: ${key}`, 'R2Service');
 
       // Read file content - use different approach for React Native
       const response = await fetch(file.uri);
@@ -99,14 +108,19 @@ class R2Service {
         ContentLength: body.byteLength,
       });
 
-      await this.client.send(command);
+        await this.client.send(command);
 
-      // Return success with public URL
-      const url = getPublicUrl(key);
-      return { success: true, url, key };
+        // Return success with public URL
+        const url = getPublicUrl(key);
+        log.info(`File uploaded successfully: ${key}`, 'R2Service', { url });
+        return { success: true, url, key };
+      });
 
     } catch (error) {
-      console.error('Upload failed:', error);
+      trackError(error as Error, 'R2Service', {
+        fileName: file.name,
+        fileSize: file.size
+      });
       return {
         success: false,
         error: error instanceof Error ? error.message : 'Upload failed'
@@ -116,9 +130,11 @@ class R2Service {
 
   async deleteFile(key: string): Promise<boolean> {
     if (!this.client) {
-      console.error('R2 client not initialized');
+      log.error('R2 client not initialized', 'R2Service');
       return false;
     }
+
+    log.info(`Deleting file: ${key}`, 'R2Service');
 
     try {
       const command = new DeleteObjectCommand({
@@ -127,6 +143,7 @@ class R2Service {
       });
 
       await this.client.send(command);
+      log.info(`File deleted successfully: ${key}`, 'R2Service');
       return true;
 
     } catch (error) {

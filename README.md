@@ -1,6 +1,6 @@
-# Square POS & Shopify POS Mobile App Clone
+# TAR POS - Point of Sale System
 
-A React Native mobile application that replicates the exact design and functionality of Square POS and Shopify POS mobile apps, built with Expo, InstantDB, and NativeWind (Tailwind CSS).
+A modern, React Native-based Point of Sale (POS) system built with Expo, featuring real-time data synchronization, cloud storage, and a clean, intuitive interface inspired by Square POS and Shopify POS mobile apps.
 
 ## ✨ Features
 
@@ -33,13 +33,103 @@ A React Native mobile application that replicates the exact design and functiona
 
 ## 🛠 Tech Stack
 
-- **React Native** with Expo
-- **InstantDB** for real-time database
-- **NativeWind** (Tailwind CSS) for styling
-- **TypeScript** for type safety
-- **Expo Router** for navigation
+- **Framework**: React Native with Expo
+- **Database**: InstantDB (real-time sync)
+- **Storage**: Cloudflare R2 for media files
+- **Styling**: NativeWind (Tailwind CSS for React Native)
+- **Navigation**: Custom navigation system
+- **State Management**: React Context + InstantDB
+- **Testing**: Jest + React Native Testing Library
+- **TypeScript**: Full type safety
+- **Rich Text**: @10play/tentap-editor for notes
+- **Icons**: Expo Vector Icons
 
 ## 🚀 Getting Started
+
+### Prerequisites
+
+- Node.js 18+
+- npm or yarn
+- Android Studio (for Android development)
+- Expo CLI
+
+### Installation
+
+1. Clone the repository:
+```bash
+git clone <repository-url>
+cd tar
+```
+
+2. Install dependencies:
+```bash
+npm install
+```
+
+3. Set up environment variables:
+Create a `.env` file in the root directory:
+```env
+# Instant DB
+EXPO_PUBLIC_INSTANT_APP_ID=your-instant-app-id
+
+# Cloudflare R2 Configuration
+EXPO_PUBLIC_R2_ACCOUNT_ID=your-account-id
+EXPO_PUBLIC_R2_ACCESS_KEY_ID=your-access-key
+EXPO_PUBLIC_R2_SECRET_ACCESS_KEY=your-secret-key
+EXPO_PUBLIC_R2_BUCKET_NAME=your-bucket-name
+EXPO_PUBLIC_R2_REGION=auto
+EXPO_PUBLIC_R2_ENDPOINT=your-r2-endpoint
+```
+
+4. Start the development server:
+```bash
+npm start
+```
+
+5. Run on Android:
+```bash
+npm run android
+```
+
+### Development Scripts
+
+- `npm start` - Start Expo development server
+- `npm run android` - Run on Android device/emulator
+- `npm test` - Run test suite
+- `npm run test:watch` - Run tests in watch mode
+- `npm run test:coverage` - Generate test coverage report
+- `npm run lint` - Run ESLint
+- `npm run lint:fix` - Fix ESLint issues
+- `npm run type-check` - Run TypeScript type checking
+
+## 📁 Project Structure
+
+```
+src/
+├── app/                    # Expo Router app directory
+│   ├── _layout.tsx        # Root layout with providers
+│   └── index.tsx          # Main app component
+├── components/            # Reusable components
+│   ├── ui/               # Base UI components
+│   │   ├── Button.tsx    # Reusable button component
+│   │   ├── Input.tsx     # Form input component
+│   │   ├── error-boundary.tsx # Error handling
+│   │   └── ...
+│   ├── products.tsx      # Product management
+│   ├── collections.tsx   # Collections management
+│   ├── dashboard.tsx     # Dashboard screen
+│   └── ...
+├── lib/                  # Utilities and services
+│   ├── instant.ts        # InstantDB configuration
+│   ├── r2-service.ts     # Cloudflare R2 service
+│   ├── logger.ts         # Logging utility
+│   └── store-context.tsx # Store management context
+├── screens/              # Full-screen components
+│   ├── create.tsx        # Option creation screen
+│   ├── group.tsx         # Option group screen
+│   └── ...
+└── __tests__/           # Test files
+```
 
 ### Prerequisites
 - Node.js 18+

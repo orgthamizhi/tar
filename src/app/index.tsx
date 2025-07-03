@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { Text, View, TouchableOpacity, BackHandler } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Feather } from '@expo/vector-icons';
@@ -11,13 +11,14 @@ import SalesScreen from "../components/sales";
 import ReportsScreen from "../components/reports";
 import FullScreenMenu from "../components/menu";
 import Options from "../components/options";
-import CreateScreen from "../screens/create";
-import OptionSetEditScreen from "../screens/option-set-edit-screen";
+
 import BottomNavigation, { BottomTab, MainScreen } from "../components/nav";
 import BottomTabContent from "../components/tabs";
 import { runMigrationIfNeeded } from "../lib/migrate-products";
 import { completeMigrationProcess } from "../lib/cleanup-legacy";
 import { StoreProvider } from "../lib/store-context";
+import { log, trackError } from "../lib/logger";
+import ErrorBoundary from "../components/ui/error-boundary";
 
 type Screen = 'dashboard' | 'sales' | 'reports' | 'products' | 'collections' | 'options' | 'menu' | 'option-create' | 'option-edit';
 
@@ -105,7 +106,8 @@ export default function Page() {
     return () => backHandler.remove();
   }, [currentScreen, showManagement, showBottomTabs, isProductFormOpen]);
 
-  const handleNavigate = (screen: Screen, data?: any) => {
+  const handleNavigate = useCallback((screen: Screen, data?: any) => {
+    log.info(`Navigating to screen: ${screen}`, 'Navigation', { data });
     setCurrentScreen(screen);
     // All screens except menu show bottom tabs by default (untoggled state)
     if (screen !== 'menu' && screen !== 'option-create' && screen !== 'option-edit') {
@@ -123,11 +125,12 @@ export default function Page() {
     if (screen === 'option-create' || screen === 'option-edit') {
       setOptionSetData(data || {});
     }
-  };
+  }, []);
 
-  const handleBottomTabPress = (tab: BottomTab) => {
+  const handleBottomTabPress = useCallback((tab: BottomTab) => {
+    log.info(`Bottom tab pressed: ${tab}`, 'Navigation');
     setActiveBottomTab(tab);
-  };
+  }, []);
 
   const renderMainContent = () => {
     // For products and collections screens, check if we should show management view
@@ -172,30 +175,8 @@ export default function Page() {
       case 'collections':
         return <CollectionsScreen isGridView={isGridView} />;
       case 'options':
-        return <Options
-          onClose={() => handleNavigate('dashboard')}
-          onNavigateToCreate={() => handleNavigate('option-create')}
-          onNavigateToEdit={(id: string, name: string) => handleNavigate('option-edit', { id, name })}
-        />;
-      case 'option-create':
-        return <CreateScreen
-          navigation={{
-            goBack: () => handleNavigate('options')
-          }}
-          route={{}}
-        />;
-      case 'option-edit':
-        return <OptionSetEditScreen
-          navigation={{
-            goBack: () => handleNavigate('options')
-          }}
-          route={{
-            params: {
-              optionSetId: optionSetData.id,
-              optionSetName: optionSetData.name
-            }
-          }}
-        />;
+        return <Options onClose={() => handleNavigate('dashboard')} />;
+
       case 'menu':
         return <FullScreenMenu
           onNavigate={handleNavigate}
@@ -208,34 +189,40 @@ export default function Page() {
 
   return (
     <StoreProvider>
-      <View className="flex flex-1">
-        {currentScreen === 'menu' || currentScreen === 'option-create' || currentScreen === 'option-edit' ? (
-          // Full screen screens without header or bottom navigation
-          renderMainContent()
-        ) : (
-          // All other screens with header and bottom navigation
-          <>
-            <Header
-              currentScreen={currentScreen}
-              onNavigate={handleNavigate}
-              showBottomTabs={showBottomTabs}
-              setShowBottomTabs={setShowBottomTabs}
-              isGridView={isGridView}
-              setIsGridView={setIsGridView}
-              showManagement={showManagement}
-              setShowManagement={setShowManagement}
-              productFormProduct={productFormProduct}
-              isProductFormOpen={isProductFormOpen}
-            />
-            {renderMainContent()}
-            <BottomNavigation
-              activeTab={activeBottomTab}
-              onTabPress={handleBottomTabPress}
-              currentScreen={currentScreen as MainScreen}
-            />
-          </>
-        )}
-      </View>
+      <ErrorBoundary>
+        <View className="flex flex-1">
+          {currentScreen === 'menu' || currentScreen === 'option-create' || currentScreen === 'option-edit' ? (
+            // Full screen screens without header or bottom navigation
+            <ErrorBoundary>
+              {renderMainContent()}
+            </ErrorBoundary>
+          ) : (
+            // All other screens with header and bottom navigation
+            <>
+              <Header
+                currentScreen={currentScreen}
+                onNavigate={handleNavigate}
+                showBottomTabs={showBottomTabs}
+                setShowBottomTabs={setShowBottomTabs}
+                isGridView={isGridView}
+                setIsGridView={setIsGridView}
+                showManagement={showManagement}
+                setShowManagement={setShowManagement}
+                productFormProduct={productFormProduct}
+                isProductFormOpen={isProductFormOpen}
+              />
+              <ErrorBoundary>
+                {renderMainContent()}
+              </ErrorBoundary>
+              <BottomNavigation
+                activeTab={activeBottomTab}
+                onTabPress={handleBottomTabPress}
+                currentScreen={currentScreen as MainScreen}
+              />
+            </>
+          )}
+        </View>
+      </ErrorBoundary>
     </StoreProvider>
   );
 }
@@ -416,6 +403,7 @@ function Header({ currentScreen, onNavigate, showBottomTabs, setShowBottomTabs, 
         return { title: 'Collections', icon: '🏷️' };
       case 'options':
         return { title: 'Options', icon: 'O' };
+
       case 'sales':
         return { title: 'Sales', icon: '💰' };
       case 'reports':

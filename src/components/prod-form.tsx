@@ -17,6 +17,8 @@ import { r2Service } from '../lib/r2-service';
 import VendorSelect from './vendor-select';
 import BrandSelect from './brand-select';
 import CollectionSelect from './collection-select';
+import { log, trackError, PerformanceMonitor } from '../lib/logger';
+import ErrorBoundary from './ui/error-boundary';
 
 interface ProductFormScreenProps {
   product?: any;
@@ -45,9 +47,8 @@ export default function ProductFormScreen({ product, onClose, onSave }: ProductF
   const productCollection = productWithCollection?.products?.[0]?.collection;
 
   const [formData, setFormData] = useState({
-    // Updated to match current schema fields
-    title: product?.title || product?.name || '',
-    name: product?.name || product?.title || '',
+    // Use title as primary field (schema uses title, not name)
+    title: product?.title || '',
     image: product?.image || '',
     medias: product?.medias || [],
     excerpt: product?.excerpt || '',
@@ -197,8 +198,8 @@ export default function ProductFormScreen({ product, onClose, onSave }: ProductF
   }, []);
 
   const handleSave = async () => {
-    if (!formData.title.trim() && !formData.name.trim()) {
-      Alert.alert('Error', 'Product title/name is required');
+    if (!formData.title.trim()) {
+      Alert.alert('Error', 'Product title is required');
       return;
     }
 
@@ -208,19 +209,23 @@ export default function ProductFormScreen({ product, onClose, onSave }: ProductF
     }
 
     setLoading(true);
+    log.info(`Starting product save: ${isEditing ? 'edit' : 'create'}`, 'ProductForm', {
+      productId: product?.id,
+      title: formData.title
+    });
+
     try {
+      await PerformanceMonitor.measureAsync('product-save', async () => {
       const timestamp = getCurrentTimestamp();
       const productData: any = {
         // Required fields
-        storeId: formData.storeId,
+        storeId: currentStore.id,
         updatedAt: timestamp,
         ...(isEditing ? {} : { createdAt: timestamp }),
       };
 
-      // Add title/name (use title if available, fallback to name)
-      const productTitle = formData.title.trim() || formData.name.trim();
-      productData.title = productTitle;
-      productData.name = productTitle;
+      // Add title (primary field in schema)
+      productData.title = formData.title.trim();
 
       // Add optional fields if they have values
       if (formData.image) productData.image = formData.image;
@@ -275,11 +280,17 @@ export default function ProductFormScreen({ product, onClose, onSave }: ProductF
         await db.transact(db.tx.products[productId].unlink({ collection: productCollection.id }));
       }
 
+      log.info(`Product saved successfully: ${productId}`, 'ProductForm');
       onSave?.();
       onClose();
+      }); // End performance monitoring
     } catch (error) {
-      console.error('Save error:', error);
-      Alert.alert('Error', 'Failed to save product');
+      trackError(error as Error, 'ProductForm', {
+        productId: product?.id,
+        isEditing,
+        formData: { title: formData.title }
+      });
+      Alert.alert('Error', 'Failed to save product. Please try again.');
     } finally {
       setLoading(false);
     }

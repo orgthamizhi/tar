@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, TouchableOpacity, FlatList, StatusBar } from 'react-native';
+import { View, Text, TouchableOpacity, FlatList, StatusBar, BackHandler } from 'react-native';
 import { MaterialCommunityIcons, Feather } from '@expo/vector-icons';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { db } from '../lib/instant';
 import { useStore } from '../lib/store-context';
 
@@ -13,10 +14,27 @@ interface OptionSet {
 interface OptionsScreenProps {
   onNavigateToSet: (setId: string, setName: string) => void;
   onClose: () => void;
+  onAddSet: () => void;
 }
 
-export default function OptionsScreen({ onNavigateToSet, onClose }: OptionsScreenProps) {
+export default function OptionsScreen({ onNavigateToSet, onClose, onAddSet }: OptionsScreenProps) {
   const { currentStore } = useStore();
+  const insets = useSafeAreaInsets();
+
+  // Handle native back button
+  useEffect(() => {
+    const backAction = () => {
+      onClose();
+      return true;
+    };
+
+    const backHandler = BackHandler.addEventListener(
+      'hardwareBackPress',
+      backAction,
+    );
+
+    return () => backHandler.remove();
+  }, [onClose]);
 
   // Use real-time subscription instead of manual loading
   const { data, isLoading, error } = db.useQuery(
@@ -62,10 +80,7 @@ export default function OptionsScreen({ onNavigateToSet, onClose }: OptionsScree
     return sets;
   }, [data?.options, isLoading]);
 
-  const handleAddSet = () => {
-    // Navigate to create new option set
-    onNavigateToSet('new', 'New Option Set');
-  };
+
 
   const renderOptionSet = ({ item }: { item: OptionSet }) => (
     <TouchableOpacity
@@ -109,38 +124,30 @@ export default function OptionsScreen({ onNavigateToSet, onClose }: OptionsScree
   return (
     <View style={{ flex: 1, backgroundColor: 'white' }}>
       <StatusBar barStyle="dark-content" backgroundColor="white" />
-      
+
       {/* Header */}
       <View style={{
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'space-between',
         paddingHorizontal: 20,
-        paddingTop: 60,
+        paddingTop: insets.top + 20,
         paddingBottom: 20,
         backgroundColor: 'white',
         borderBottomWidth: 1,
         borderBottomColor: '#E5E5EA',
       }}>
-        <TouchableOpacity onPress={onClose}>
+        <TouchableOpacity onPress={() => onClose()}>
           <Text style={{
             fontSize: 17,
-            color: '#007AFF',
-            fontWeight: '400',
+            fontWeight: '600',
+            color: '#1C1C1E',
           }}>
-            Close
+            Options
           </Text>
         </TouchableOpacity>
-        
-        <Text style={{
-          fontSize: 17,
-          fontWeight: '600',
-          color: '#1C1C1E',
-        }}>
-          Options
-        </Text>
-        
-        <TouchableOpacity onPress={handleAddSet}>
+
+        <TouchableOpacity onPress={onAddSet}>
           <Feather name="plus" size={24} color="#007AFF" />
         </TouchableOpacity>
       </View>

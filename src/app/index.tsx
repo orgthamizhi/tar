@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import { Text, View, TouchableOpacity, BackHandler } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Feather } from '@expo/vector-icons';
@@ -175,7 +175,10 @@ export default function Page() {
       case 'collections':
         return <CollectionsScreen isGridView={isGridView} />;
       case 'options':
-        return <Options onClose={() => handleNavigate('dashboard')} />;
+        return <Options
+          onClose={() => handleNavigate('dashboard')}
+          onOpenMenu={() => handleNavigate('menu')}
+        />;
 
       case 'menu':
         return <FullScreenMenu
@@ -191,7 +194,7 @@ export default function Page() {
     <StoreProvider>
       <ErrorBoundary>
         <View className="flex flex-1">
-          {currentScreen === 'menu' || currentScreen === 'option-create' || currentScreen === 'option-edit' ? (
+          {currentScreen === 'menu' || currentScreen === 'options' ? (
             // Full screen screens without header or bottom navigation
             <ErrorBoundary>
               {renderMainContent()}

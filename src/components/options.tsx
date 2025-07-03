@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View } from 'react-native';
+import { View, Modal } from 'react-native';
 import OptionsScreen from '../screens/options';
 import SetScreen from '../screens/set';
 
@@ -13,9 +13,10 @@ interface OptionsState {
 
 interface OptionsProps {
   onClose?: () => void;
+  onOpenMenu?: () => void;
 }
 
-export default function Options({ onClose }: OptionsProps) {
+export default function Options({ onClose, onOpenMenu }: OptionsProps) {
   const [state, setState] = useState<OptionsState>({
     screen: 'list',
   });
@@ -27,6 +28,13 @@ export default function Options({ onClose }: OptionsProps) {
       selectedSetName: setName,
     });
   };
+
+  const handleAddSet = () => {
+    // Navigate to create new option set
+    navigateToSet('new', 'New Option Set');
+  };
+
+
 
   const navigateToList = () => {
     setState({ screen: 'list' });
@@ -48,18 +56,26 @@ export default function Options({ onClose }: OptionsProps) {
       {state.screen === 'list' && (
         <OptionsScreen
           onNavigateToSet={navigateToSet}
-          onClose={handleClose}
+          onClose={onOpenMenu || handleClose}
+          onAddSet={handleAddSet}
         />
       )}
 
-      {state.screen === 'set' && state.selectedSetId && state.selectedSetName && (
-        <SetScreen
-          setId={state.selectedSetId}
-          setName={state.selectedSetName}
-          onClose={navigateToList}
-          onSave={handleSetSave}
-        />
-      )}
+      {/* Full screen modal for edit option set */}
+      <Modal
+        visible={state.screen === 'set'}
+        animationType="slide"
+        presentationStyle="fullScreen"
+      >
+        {state.screen === 'set' && state.selectedSetId && state.selectedSetName && (
+          <SetScreen
+            setId={state.selectedSetId}
+            setName={state.selectedSetName}
+            onClose={navigateToList}
+            onSave={handleSetSave}
+          />
+        )}
+      </Modal>
     </View>
   );
 }

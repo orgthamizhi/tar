@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { View, Text, TouchableOpacity, TextInput, FlatList, StatusBar, Alert } from 'react-native';
+import React, { useState, useRef, useEffect } from 'react';
+import { View, Text, TouchableOpacity, TextInput, FlatList, StatusBar, Alert, KeyboardAvoidingView, Platform } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import { db } from '../lib/instant';
@@ -58,6 +58,19 @@ export default function SetScreen({ setId, setName, onClose, onSave }: SetScreen
 
   // Current working values (local state that gets saved on button press)
   const [currentValues, setCurrentValues] = useState<OptionValue[]>([]);
+
+  // Ref for FlatList to enable scrolling to specific items
+  const flatListRef = useRef<FlatList>(null);
+
+  // Refs for each group TextInput to enable explicit focusing
+  const groupInputRefs = useRef<{[key: string]: TextInput | null}>({
+    '1': null,
+    '2': null,
+    '3': null
+  });
+
+  // Ref for option set name input to control its focus
+  const setNameInputRef = useRef<TextInput>(null);
 
   // Force refresh counter to trigger re-renders when needed
   const [refreshKey, setRefreshKey] = useState(0);
@@ -123,6 +136,33 @@ export default function SetScreen({ setId, setName, onClose, onSave }: SetScreen
     }
   }, [data?.options, isNewSet, currentValues.length]);
 
+  // Focus group input when editingGroup changes
+  useEffect(() => {
+    if (editingGroup) {
+      console.log(`🎯 useEffect: Focusing group input for group ${editingGroup}`);
+
+      // Multiple attempts to focus with increasing delays
+      const focusAttempts = [50, 100, 200, 300, 500];
+
+      focusAttempts.forEach((delay) => {
+        setTimeout(() => {
+          const groupInput = groupInputRefs.current[editingGroup];
+          if (groupInput && editingGroup) {
+            console.log(`🎯 Focus attempt at ${delay}ms for group ${editingGroup}`);
+            groupInput.focus();
+
+            // Also blur the set name input again to be sure
+            if (setNameInputRef.current) {
+              setNameInputRef.current.blur();
+            }
+          } else {
+            console.log(`❌ No ref found for group ${editingGroup} at ${delay}ms`);
+          }
+        }, delay);
+      });
+    }
+  }, [editingGroup]);
+
   // Create flat list data with headers, values, and input rows
   const flatListData = React.useMemo(() => {
     const data: ListItem[] = [];
@@ -161,8 +201,7 @@ export default function SetScreen({ setId, setName, onClose, onSave }: SetScreen
       });
     });
 
-
-
+    console.log(`📊 FlatList data generated:`, data.map(item => `${item.type}:${item.id}`));
     return data;
   }, [currentValues, groupNames, groupInputRows, refreshKey]);
 
@@ -394,7 +433,11 @@ export default function SetScreen({ setId, setName, onClose, onSave }: SetScreen
 
 
   return (
-    <View style={{ flex: 1, backgroundColor: 'white' }}>
+    <KeyboardAvoidingView
+      style={{ flex: 1, backgroundColor: 'white' }}
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      keyboardVerticalOffset={0}
+    >
       <StatusBar barStyle="dark-content" backgroundColor="white" />
       
       {/* Header */}
@@ -446,6 +489,7 @@ export default function SetScreen({ setId, setName, onClose, onSave }: SetScreen
         borderBottomColor: '#E5E5EA',
       }}>
         <TextInput
+          ref={setNameInputRef}
           style={{
             fontSize: 17,
             color: '#1C1C1E',
@@ -454,14 +498,16 @@ export default function SetScreen({ setId, setName, onClose, onSave }: SetScreen
           }}
           value={currentSetName}
           onChangeText={setCurrentSetName}
+          onFocus={() => console.log('❌ Option set name input got focus (this should not happen when editing group)')}
           placeholder="Label"
           placeholderTextColor="#C7C7CC"
-          autoFocus={isNewSet && !editingGroup && currentValues.length === 0}
+          autoFocus={false}
         />
       </View>
 
       {/* Groups Section - Using single FlatList to avoid VirtualizedList nesting */}
       <FlatList
+        ref={flatListRef}
         data={flatListData}
         keyExtractor={(item) => item.id}
         showsVerticalScrollIndicator={false}
@@ -470,6 +516,8 @@ export default function SetScreen({ setId, setName, onClose, onSave }: SetScreen
         renderItem={({ item }) => {
           if (item.type === 'header') {
             const headerItem = item as GroupHeaderItem;
+            console.log(`🔍 Rendering header for group ${headerItem.groupKey}, editingGroup: ${editingGroup}`);
+            console.log(`🔍 Should render TextInput for group ${headerItem.groupKey}:`, editingGroup === headerItem.groupKey);
             return (
               <View style={{
                 flexDirection: 'row',
@@ -482,7 +530,13 @@ export default function SetScreen({ setId, setName, onClose, onSave }: SetScreen
                 borderBottomColor: '#E5E5EA',
               }}>
                 {editingGroup === headerItem.groupKey ? (
-                  <TextInput
+                  <>
+                    {console.log(`✅ Rendering TextInput for group ${headerItem.groupKey}`)}
+                    <TextInput
+                    ref={(ref) => {
+                      console.log(`📝 Setting ref for group ${headerItem.groupKey}:`, ref ? 'SUCCESS' : 'NULL');
+                      groupInputRefs.current[headerItem.groupKey] = ref;
+                    }}
                     key={`group-input-${headerItem.groupKey}`}
                     style={{
                       flex: 1,
@@ -494,17 +548,73 @@ export default function SetScreen({ setId, setName, onClose, onSave }: SetScreen
                     }}
                     value={editingGroupName}
                     onChangeText={setEditingGroupName}
+                    onFocus={() => console.log(`✅ Group input ${headerItem.groupKey} actually got focus!`)}
+                    onLayout={() => {
+                      // Focus immediately when the TextInput is laid out (rendered)
+                      console.log(`📐 Group input ${headerItem.groupKey} laid out, focusing...`);
+                      setTimeout(() => {
+                        const groupInput = groupInputRefs.current[headerItem.groupKey];
+                        if (groupInput) {
+                          console.log(`🎯 Focusing group ${headerItem.groupKey} from onLayout`);
+                          groupInput.focus();
+                          // Blur the set name input
+                          if (setNameInputRef.current) {
+                            setNameInputRef.current.blur();
+                          }
+                        }
+                      }, 50);
+                    }}
                     onSubmitEditing={() => updateGroupName(headerItem.groupKey, editingGroupName)}
                     onBlur={() => updateGroupName(headerItem.groupKey, editingGroupName)}
                     selectTextOnFocus={true}
-                    autoFocus={true}
+                    autoFocus={false}
                   />
+                  </>
                 ) : (
                   <TouchableOpacity
                     onPress={() => {
                       console.log(`🎯 Tapping group ${headerItem.groupKey} (${headerItem.groupName})`);
+                      console.log(`📝 Current editingGroup state: ${editingGroup}`);
+
+                      // First blur any currently focused input
+                      if (setNameInputRef.current) {
+                        console.log('🔄 Blurring set name input');
+                        setNameInputRef.current.blur();
+                      }
+
+                      // Blur the set name input first
+                      if (setNameInputRef.current) {
+                        console.log('🔄 Blurring set name input');
+                        setNameInputRef.current.blur();
+                      }
+
+                      // Set editing state - the onLayout callback will handle focusing
+                      console.log(`📝 Setting editingGroup to: ${headerItem.groupKey}`);
                       setEditingGroup(headerItem.groupKey);
                       setEditingGroupName(headerItem.groupName);
+
+                      // Scroll to the group header after a short delay
+                      setTimeout(() => {
+                        const itemIndex = flatListData.findIndex(item =>
+                          item.type === 'header' && (item as GroupHeaderItem).groupKey === headerItem.groupKey
+                        );
+                        if (itemIndex !== -1 && flatListRef.current) {
+                          try {
+                            flatListRef.current.scrollToIndex({
+                              index: itemIndex,
+                              animated: true,
+                              viewPosition: 0.3, // Position the item 30% from the top of the visible area
+                            });
+                          } catch (error) {
+                            // Fallback to scrollToOffset if scrollToIndex fails
+                            console.log('ScrollToIndex failed, using scrollToOffset');
+                            flatListRef.current.scrollToOffset({
+                              offset: itemIndex * 60, // Approximate item height
+                              animated: true,
+                            });
+                          }
+                        }
+                      }, 100);
                     }}
                     style={{ flex: 1 }}
                   >
@@ -641,6 +751,6 @@ export default function SetScreen({ setId, setName, onClose, onSave }: SetScreen
           );
         }}
       />
-    </View>
+    </KeyboardAvoidingView>
   );
 }

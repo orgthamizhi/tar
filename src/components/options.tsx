@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { View, Modal } from 'react-native';
 import OptionsScreen from '../screens/options';
-import SetScreen from '../screens/set';
+import SetScreen from '../screens/set-simple';
 
 type OptionsScreenType = 'list' | 'set';
 
@@ -66,6 +66,7 @@ export default function Options({ onClose, onOpenMenu }: OptionsProps) {
         visible={state.screen === 'set'}
         animationType="slide"
         presentationStyle="fullScreen"
+        onRequestClose={navigateToList}
       >
         {state.screen === 'set' && state.selectedSetId && state.selectedSetName && (
           <SetScreen

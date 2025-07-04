@@ -6,11 +6,30 @@ import * as ImagePicker from 'expo-image-picker';
 import { RichText, Toolbar, useEditorBridge } from '@10play/tentap-editor';
 import Input from './ui/Input';
 import QuantitySelector from './ui/qty';
-import { TabContent, FieldGroup } from './ui/vtabs';
+
 import R2Image from './ui/r2-image';
 import { db, getCurrentTimestamp } from '../lib/instant';
 import { MediaManager, MediaItem } from './media';
 import { useStore } from '../lib/store-context';
+
+// Simple replacement components for removed vtabs
+const TabContent = ({ title, children }: { title: string; children: React.ReactNode }) => (
+  <View style={{ flex: 1, padding: 16 }}>
+    {children}
+  </View>
+);
+
+const FieldGroup = ({ title, children }: { title: string; children: React.ReactNode }) => (
+  <View style={{ marginBottom: 24 }}>
+    <Text style={{ fontSize: 16, fontWeight: '600', color: '#1F2937', marginBottom: 12 }}>
+      {title}
+    </Text>
+    <View style={{ gap: 12 }}>
+      {children}
+    </View>
+  </View>
+);
+
 import TypeSelect from './type-select';
 import CategorySelect from './category-select';
 import { r2Service } from '../lib/r2-service';

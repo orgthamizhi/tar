@@ -125,8 +125,8 @@ src/
 │   ├── logger.ts         # Logging utility
 │   └── store-context.tsx # Store management context
 ├── screens/              # Full-screen components
-│   ├── create.tsx        # Option creation screen
-│   ├── group.tsx         # Option group screen
+│   ├── options.tsx       # Options list screen
+│   ├── set-simple.tsx    # Option set management screen
 │   └── ...
 └── __tests__/           # Test files
 ```
